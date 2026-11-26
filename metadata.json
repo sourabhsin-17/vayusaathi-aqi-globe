@@ -1,0 +1,6 @@
+{
+  "name": "VayuSaathi",
+  "description": "GenAI-powered urban air quality assistant helping Indian families and communities navigate winter smog and air pollution with live Open-Meteo data, personalized low-emission routines, indoor air guidance, and transparent impact estimates.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
