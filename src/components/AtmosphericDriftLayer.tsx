@@ -4,56 +4,58 @@ interface AtmosphericDriftLayerProps {
   usAqi?: number;
 }
 
-type ParticleKind = 'cloud' | 'fog' | 'smog';
+type ParticleKind = 'cloud' | 'fog';
 
 interface AtmosphericParticle {
   kind: ParticleKind;
   x: number;
   y: number;
   vx: number;
-  vy: number;
   width: number;
   height: number;
   alpha: number;
-  phase: number;
-  swayAmpX: number;
-  swayAmpY: number;
-  swayFreq: number;
-  rotation: number;
-  vr: number;
   spriteIdx: number;
 }
 
 function createCloudSprite(tintRgb: string, variant: number): HTMLCanvasElement {
   const c = document.createElement('canvas');
-  c.width = 160;
-  c.height = 96;
+  c.width = 280;
+  c.height = 150;
   const ctx = c.getContext('2d');
   if (!ctx) return c;
 
   const puffs =
     variant === 0
       ? [
-          { x: 52, y: 54, rx: 32, ry: 20 },
-          { x: 80, y: 42, rx: 36, ry: 25 },
-          { x: 108, y: 53, rx: 30, ry: 19 },
-          { x: 80, y: 58, rx: 52, ry: 16 },
+          { x: 78, y: 88, rx: 52, ry: 32 },
+          { x: 128, y: 66, rx: 62, ry: 40 },
+          { x: 184, y: 78, rx: 54, ry: 34 },
+          { x: 222, y: 94, rx: 38, ry: 24 },
+          { x: 146, y: 96, rx: 94, ry: 26 },
+        ]
+      : variant === 1
+      ? [
+          { x: 64, y: 90, rx: 46, ry: 28 },
+          { x: 108, y: 70, rx: 54, ry: 36 },
+          { x: 158, y: 60, rx: 60, ry: 40 },
+          { x: 208, y: 82, rx: 48, ry: 30 },
+          { x: 140, y: 98, rx: 96, ry: 24 },
         ]
       : [
-          { x: 46, y: 52, rx: 28, ry: 18 },
-          { x: 74, y: 40, rx: 34, ry: 23 },
-          { x: 100, y: 46, rx: 32, ry: 21 },
-          { x: 120, y: 56, rx: 24, ry: 15 },
-          { x: 82, y: 58, rx: 54, ry: 15 },
+          { x: 74, y: 86, rx: 48, ry: 30 },
+          { x: 126, y: 68, rx: 58, ry: 38 },
+          { x: 176, y: 74, rx: 52, ry: 33 },
+          { x: 214, y: 92, rx: 36, ry: 22 },
+          { x: 142, y: 96, rx: 88, ry: 24 },
         ];
 
   for (const puff of puffs) {
     ctx.save();
     ctx.translate(puff.x, puff.y);
     ctx.scale(1, puff.ry / puff.rx);
-    const g = ctx.createRadialGradient(0, 0, puff.rx * 0.08, 0, 0, puff.rx);
-    g.addColorStop(0, `rgba(${tintRgb}, 0.85)`);
-    g.addColorStop(0.5, `rgba(${tintRgb}, 0.42)`);
+    const g = ctx.createRadialGradient(0, 0, puff.rx * 0.1, 0, 0, puff.rx);
+    g.addColorStop(0, `rgba(${tintRgb}, 0.88)`);
+    g.addColorStop(0.52, `rgba(${tintRgb}, 0.44)`);
     g.addColorStop(1, `rgba(${tintRgb}, 0)`);
     ctx.fillStyle = g;
     ctx.beginPath();
@@ -65,52 +67,41 @@ function createCloudSprite(tintRgb: string, variant: number): HTMLCanvasElement 
   return c;
 }
 
-function createFogWispSprite(tintRgb: string): HTMLCanvasElement {
+function createFogSprite(tintRgb: string): HTMLCanvasElement {
   const c = document.createElement('canvas');
-  c.width = 220;
-  c.height = 80;
+  c.width = 360;
+  c.height = 110;
   const ctx = c.getContext('2d');
   if (!ctx) return c;
 
-  ctx.save();
-  ctx.translate(110, 40);
-  ctx.scale(1, 0.34);
-  const g = ctx.createRadialGradient(0, 0, 8, 0, 0, 102);
-  g.addColorStop(0, `rgba(${tintRgb}, 0.65)`);
-  g.addColorStop(0.55, `rgba(${tintRgb}, 0.25)`);
-  g.addColorStop(1, `rgba(${tintRgb}, 0)`);
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(0, 0, 102, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
+  const layers = [
+    { x: 180, y: 55, rx: 165, ry: 36, peak: 0.72 },
+    { x: 125, y: 48, rx: 110, ry: 28, peak: 0.46 },
+    { x: 235, y: 62, rx: 112, ry: 28, peak: 0.44 },
+  ];
 
-  return c;
-}
-
-function createSmogMoteSprite(tintRgb: string): HTMLCanvasElement {
-  const c = document.createElement('canvas');
-  c.width = 28;
-  c.height = 28;
-  const ctx = c.getContext('2d');
-  if (!ctx) return c;
-
-  const g = ctx.createRadialGradient(14, 14, 1, 14, 14, 13);
-  g.addColorStop(0, `rgba(${tintRgb}, 0.95)`);
-  g.addColorStop(0.45, `rgba(${tintRgb}, 0.5)`);
-  g.addColorStop(1, `rgba(${tintRgb}, 0)`);
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(14, 14, 13, 0, Math.PI * 2);
-  ctx.fill();
+  for (const layer of layers) {
+    ctx.save();
+    ctx.translate(layer.x, layer.y);
+    ctx.scale(1, layer.ry / layer.rx);
+    const g = ctx.createRadialGradient(0, 0, layer.rx * 0.08, 0, 0, layer.rx);
+    g.addColorStop(0, `rgba(${tintRgb}, ${layer.peak})`);
+    g.addColorStop(0.55, `rgba(${tintRgb}, ${layer.peak * 0.38})`);
+    g.addColorStop(1, `rgba(${tintRgb}, 0)`);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, layer.rx, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 
   return c;
 }
 
 /**
- * Full-viewport snowfall-style atmospheric particle overlay where
- * small soft clouds, drifting fog wisps, and suspended smog motes
- * glide right, left, up, and down across the entire webpage.
+ * Full-viewport atmospheric cloud & fog overlay.
+ * Renders larger soft clouds and wide fog bands drifting horizontally
+ * left-to-right and right-to-left only, with zero snowfall dots.
  */
 export function AtmosphericDriftLayer({ usAqi = 65 }: AtmosphericDriftLayerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -144,87 +135,51 @@ export function AtmosphericDriftLayer({ usAqi = 65 }: AtmosphericDriftLayerProps
     resize();
     window.addEventListener('resize', resize);
 
-    // Pre-build crisp atmospheric palettes (cool sky cloud/fog + warm smog motes)
-    const coolCloudSprites = [
-      createCloudSprite('226, 240, 255', 0),
-      createCloudSprite('198, 228, 252', 1),
+    const coolClouds = [
+      createCloudSprite('220, 238, 255', 0),
+      createCloudSprite('194, 224, 250', 1),
+      createCloudSprite('210, 232, 255', 2),
     ];
-    const warmSmogCloudSprites = [
-      createCloudSprite('240, 206, 172', 0),
-      createCloudSprite('212, 198, 222', 1),
+    const warmClouds = [
+      createCloudSprite('238, 202, 165', 0),
+      createCloudSprite('216, 198, 218', 1),
+      createCloudSprite('230, 190, 152', 2),
     ];
-    const coolFogSprite = createFogWispSprite('214, 236, 255');
-    const warmFogSprite = createFogWispSprite('232, 194, 152');
-    const coolSmogMote = createSmogMoteSprite('225, 243, 255');
-    const warmSmogMote = createSmogMoteSprite('247, 190, 124');
+    const coolFog = createFogSprite('212, 234, 255');
+    const warmFog = createFogSprite('234, 194, 152');
 
-    const totalCount = Math.min(82, Math.max(48, Math.round((width * height) / 24000)));
+    // Larger, clean clouds & fog banks moving purely horizontally (left->right or right->left)
+    const totalCount = Math.min(34, Math.max(20, Math.round((width * height) / 62000)));
     const particles: AtmosphericParticle[] = [];
 
     for (let i = 0; i < totalCount; i++) {
-      const roll = i / totalCount;
-      // ~30% floating miniature clouds, ~25% fog wisps, ~45% fine smog/mist motes
-      const kind: ParticleKind =
-        roll < 0.3 ? 'cloud' : roll < 0.55 ? 'fog' : 'smog';
-
-      const dirX = Math.random() < 0.55 ? 1 : -1;
-      const dirY = Math.random() < 0.62 ? 1 : -1;
+      const kind: ParticleKind = i % 2 === 0 ? 'cloud' : 'fog';
+      const dirX = i % 2 === 0 ? 1 : -1;
+      // Even vertical distribution across the page so clouds/fog cover top, middle, and bottom cleanly
+      const laneY = ((i + 0.5) / totalCount) * height + (Math.random() - 0.5) * 32;
 
       if (kind === 'cloud') {
-        const w = 36 + Math.random() * 54;
+        const w = 120 + Math.random() * 140;
         particles.push({
           kind,
-          x: Math.random() * width,
-          y: Math.random() * height,
-          vx: dirX * (0.22 + Math.random() * 0.42),
-          vy: dirY * (0.12 + Math.random() * 0.25),
+          x: Math.random() * (width + 260) - 130,
+          y: Math.max(20, Math.min(height - 20, laneY)),
+          vx: dirX * (0.28 + Math.random() * 0.45),
           width: w,
-          height: w * 0.6,
-          alpha: 0.24 + Math.random() * 0.24,
-          phase: Math.random() * Math.PI * 2,
-          swayAmpX: 0.16 + Math.random() * 0.22,
-          swayAmpY: 0.14 + Math.random() * 0.2,
-          swayFreq: 0.0005 + Math.random() * 0.0007,
-          rotation: (Math.random() - 0.5) * 0.12,
-          vr: (Math.random() - 0.5) * 0.0004,
-          spriteIdx: i % 2,
-        });
-      } else if (kind === 'fog') {
-        const w = 78 + Math.random() * 110;
-        particles.push({
-          kind,
-          x: Math.random() * width,
-          y: Math.random() * height,
-          vx: dirX * (0.3 + Math.random() * 0.55),
-          vy: dirY * (0.08 + Math.random() * 0.22),
-          width: w,
-          height: w * 0.36,
-          alpha: 0.14 + Math.random() * 0.16,
-          phase: Math.random() * Math.PI * 2,
-          swayAmpX: 0.2 + Math.random() * 0.28,
-          swayAmpY: 0.12 + Math.random() * 0.18,
-          swayFreq: 0.00045 + Math.random() * 0.0006,
-          rotation: (Math.random() - 0.5) * 0.16,
-          vr: (Math.random() - 0.5) * 0.0003,
-          spriteIdx: 0,
+          height: w * 0.54,
+          alpha: 0.16 + Math.random() * 0.16,
+          spriteIdx: i % 3,
         });
       } else {
-        const size = 5 + Math.random() * 9;
+        const w = 190 + Math.random() * 190;
         particles.push({
           kind,
-          x: Math.random() * width,
-          y: Math.random() * height,
-          vx: dirX * (0.28 + Math.random() * 0.55),
-          vy: dirY * (0.28 + Math.random() * 0.58),
-          width: size,
-          height: size,
-          alpha: 0.3 + Math.random() * 0.38,
-          phase: Math.random() * Math.PI * 2,
-          swayAmpX: 0.28 + Math.random() * 0.38,
-          swayAmpY: 0.18 + Math.random() * 0.28,
-          swayFreq: 0.001 + Math.random() * 0.0015,
-          rotation: 0,
-          vr: 0,
+          x: Math.random() * (width + 320) - 160,
+          y: Math.max(20, Math.min(height - 20, laneY)),
+          vx: dirX * (0.32 + Math.random() * 0.52),
+          width: w,
+          height: w * 0.31,
+          alpha: 0.12 + Math.random() * 0.14,
           spriteIdx: 0,
         });
       }
@@ -240,46 +195,36 @@ export function AtmosphericDriftLayer({ usAqi = 65 }: AtmosphericDriftLayerProps
       ctx.clearRect(0, 0, width, height);
 
       const currentAqi = aqiRef.current;
-      const smogRatio = Math.min(1, Math.max(0, (currentAqi - 60) / 170));
+      const smogRatio = Math.min(1, Math.max(0, (currentAqi - 70) / 160));
       const useWarmSmog = currentAqi > 130;
 
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
 
         if (!prefersReducedMotion) {
-          const waveX = Math.sin(now * p.swayFreq + p.phase) * p.swayAmpX;
-          const waveY = Math.cos(now * p.swayFreq * 0.85 + p.phase) * p.swayAmpY;
+          // Pure horizontal drift only (left-to-right or right-to-left)
+          p.x += p.vx * dt;
 
-          p.x += (p.vx + waveX) * dt;
-          p.y += (p.vy + waveY) * dt;
-          p.rotation += p.vr * dt;
-
-          const padX = p.width * 0.8 + 40;
-          const padY = p.height * 0.8 + 40;
-          if (p.x < -padX) p.x = width + padX;
-          else if (p.x > width + padX) p.x = -padX;
-          if (p.y < -padY) p.y = height + padY;
-          else if (p.y > height + padY) p.y = -padY;
+          const padX = p.width * 0.65 + 40;
+          if (p.vx > 0 && p.x > width + padX) {
+            p.x = -padX;
+          } else if (p.vx < 0 && p.x < -padX) {
+            p.x = width + padX;
+          }
         }
 
-        let sprite: HTMLCanvasElement;
-        if (p.kind === 'cloud') {
-          sprite = useWarmSmog && i % 2 === 0
-            ? warmSmogCloudSprites[p.spriteIdx]
-            : coolCloudSprites[p.spriteIdx];
-        } else if (p.kind === 'fog') {
-          sprite = useWarmSmog && i % 2 === 1 ? warmFogSprite : coolFogSprite;
-        } else {
-          sprite = smogRatio > 0.35 && i % 2 === 0 ? warmSmogMote : coolSmogMote;
-        }
+        const sprite =
+          p.kind === 'cloud'
+            ? useWarmSmog && i % 3 === 0
+              ? warmClouds[p.spriteIdx]
+              : coolClouds[p.spriteIdx]
+            : useWarmSmog && i % 2 === 1
+            ? warmFog
+            : coolFog;
 
         ctx.save();
-        ctx.globalAlpha = Math.min(0.75, p.alpha * (1 + smogRatio * 0.32));
-        ctx.translate(p.x, p.y);
-        if (p.rotation !== 0) {
-          ctx.rotate(p.rotation);
-        }
-        ctx.drawImage(sprite, -p.width / 2, -p.height / 2, p.width, p.height);
+        ctx.globalAlpha = Math.min(0.45, p.alpha * (1 + smogRatio * 0.28));
+        ctx.drawImage(sprite, p.x - p.width / 2, p.y - p.height / 2, p.width, p.height);
         ctx.restore();
       }
 
