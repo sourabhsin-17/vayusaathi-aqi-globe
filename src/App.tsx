@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, SlidersHorizontal, X } from 'lucide-react';
 import { AskAssistant } from './components/AskAssistant';
+import { AtmosphericDriftLayer } from './components/AtmosphericDriftLayer';
 import { BriefingSlideDeck } from './components/BriefingSlideDeck';
 import { CityAqiDirectory } from './components/CityAqiDirectory';
 import { CityHeroCarousel } from './components/CityHeroCarousel';
@@ -177,10 +178,11 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div
-        className={`min-h-screen bg-[#06050E] bg-dot-grid section-electric-glow text-[#E6EDF7] flex flex-col ${
+        className={`relative min-h-screen overflow-x-hidden bg-[#06050E] bg-dot-grid section-electric-glow text-[#E6EDF7] flex flex-col ${
           easyRead ? 'easy-read' : ''
         }`}
       >
+        <AtmosphericDriftLayer usAqi={snapshot?.current.usAqi} />
         {mapsQuotaExceeded ? (
           <div
             role="alert"
@@ -284,7 +286,7 @@ export default function App() {
           </div>
         </header>
 
-        <main id="top" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        <main id="top" className="relative z-10 mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
           {view === 'setup' ? (
             <SetupWizard
               profile={profile}
@@ -369,7 +371,7 @@ export default function App() {
           )}
         </main>
 
-        <footer className="border-t border-white/10 bg-[#0B0A16]">
+        <footer className="relative z-10 border-t border-white/10 bg-[#0B0A16]">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-5 text-xs text-[#A7A3C7] sm:px-6">
             <span>
               <strong className="font-display text-[#E6EDF7]">VayuSaathi</strong> · {t(lang, 'generalGuidanceNote')}
