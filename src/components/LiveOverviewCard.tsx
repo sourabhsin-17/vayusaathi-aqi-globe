@@ -202,23 +202,27 @@ export function LiveOverviewCard({
   if (error && !snapshot) {
     return (
       <section
+        id="overview"
         role="alert"
         className="obsidian-surface rounded-3xl border border-rose-400/35 p-6 text-[#E6EDF7]"
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-300" aria-hidden="true" />
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <h2 className="text-lg font-semibold text-[#E6EDF7] font-display">
-                {lang === 'hi'
-                  ? 'लाइव वायु गुणवत्ता डेटा प्राप्त नहीं हो सका'
-                  : 'Unable to fetch live air quality data'}
+                Live air quality data is temporarily unavailable.
               </h2>
+              {lang === 'hi' ? (
+                <p className="text-sm font-medium text-[#E6EDF7]/90">
+                  लाइव वायु गुणवत्ता डेटा अस्थायी रूप से अनुपलब्ध है।
+                </p>
+              ) : null}
               <p className="text-sm text-[#A7A3C7]">{error}</p>
               <p className="text-xs text-[#A7A3C7]/80">
                 {lang === 'hi'
                   ? 'VayuSaathi कभी भी नकली या काल्पनिक आंकड़े नहीं दिखाता।'
-                  : 'VayuSaathi never displays dummy or simulated pollution numbers.'}
+                  : 'VayuSaathi never fabricates or substitutes simulated pollution readings.'}
               </p>
             </div>
           </div>
@@ -255,14 +259,23 @@ export function LiveOverviewCard({
       ? 'border-amber-400/35 bg-amber-500/12 text-[#E6EDF7]'
       : 'border-rose-400/35 bg-rose-500/12 text-[#E6EDF7]';
 
-  const getPollutantTone = (val: number, max: number) => {
+  const getPollutantTone = (val: number | null, max: number) => {
+    if (val === null) return { barFill: 'bg-white/20', accentText: 'text-[#A7A3C7]' };
     const ratio = val / max;
     if (ratio >= 0.9) return { barFill: 'bg-rose-400', accentText: 'text-rose-300' };
     if (ratio >= 0.45) return { barFill: 'bg-amber-400', accentText: 'text-amber-300' };
     return { barFill: 'bg-[#5DCAA5]', accentText: 'text-[#5DCAA5]' };
   };
 
-  const pollutantCards = [
+  const pollutantCards: Array<{
+    name: string;
+    value: number | null;
+    unit: string;
+    refMax: number;
+    note: string;
+    barFill: string;
+    accentText: string;
+  }> = [
     {
       name: 'PM2.5',
       value: snapshot.current.pm25,
@@ -337,10 +350,26 @@ export function LiveOverviewCard({
     >
       {/* Header + Verified Source Attribution */}
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-4">
-        <div className="space-y-1">
-          <p className="font-mono-tabular text-[11px] font-semibold uppercase tracking-wider text-[#67E8F9]">
-            01. {lang === 'hi' ? 'सत्यापित लाइव स्थिति' : 'Verified Live Telemetry'}
-          </p>
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-mono-tabular text-[11px] font-semibold uppercase tracking-wider text-[#67E8F9]">
+              01. {lang === 'hi' ? 'सत्यापित वर्तमान रीडिंग' : 'Current Air Reading'}
+            </p>
+            {snapshot.isStale ? (
+              <span className="inline-flex items-center gap-1 rounded-md border border-amber-400/45 bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-200">
+                <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                {lang === 'hi' ? 'पुरानी रीडिंग (कैश्ड)' : 'Older reading (cached)'}
+              </span>
+            ) : snapshot.fromCache ? (
+              <span className="rounded-md border border-white/15 bg-[#0B0A16] px-2 py-0.5 text-[11px] font-medium text-[#A7A3C7]">
+                {lang === 'hi' ? '5-मिनट कैश' : '5-min cache'}
+              </span>
+            ) : (
+              <span className="rounded-md border border-[#5DCAA5]/35 bg-[#1D9E75]/15 px-2 py-0.5 text-[11px] font-semibold text-[#5DCAA5]">
+                {lang === 'hi' ? 'लाइव वर्तमान रीडिंग' : 'Live Current Reading'}
+              </span>
+            )}
+          </div>
           <h2 className="text-2xl font-semibold tracking-tight text-[#E6EDF7] font-display sm:text-3xl">
             {t(lang, 'liveAirTitle')} — {snapshot.location.name}, {snapshot.location.state}
           </h2>
@@ -350,16 +379,12 @@ export function LiveOverviewCard({
             </span>
             <span aria-hidden="true">·</span>
             <span className="font-mono-tabular">
-              {t(lang, 'observedPrefix')} {observedText}
+              {t(lang, 'observedPrefix')} <strong className="text-[#E6EDF7]">{observedText}</strong>
             </span>
             <span aria-hidden="true">·</span>
-            <span className="font-semibold text-[#5DCAA5]">{freshness}</span>
-            {snapshot.fromCache ? (
-              <>
-                <span aria-hidden="true">·</span>
-                <span>{lang === 'hi' ? '5-मिनट कैश' : '5-min cache'}</span>
-              </>
-            ) : null}
+            <span className={`font-semibold ${snapshot.isStale ? 'text-amber-300' : 'text-[#5DCAA5]'}`}>
+              {freshness}
+            </span>
             <span aria-hidden="true">·</span>
             <span className="text-[#67E8F9]">
               {lang === 'hi' ? 'स्वतः जांच हर 5 मिनट' : 'Auto-checks every 5m'}
@@ -378,16 +403,25 @@ export function LiveOverviewCard({
         </button>
       </div>
 
-      {error ? (
+      {error || snapshot.isStale ? (
         <div
           role="alert"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-400/35 bg-rose-500/15 px-4 py-3 text-xs text-rose-200"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-400/40 bg-amber-500/15 px-4 py-3 text-xs text-amber-100"
         >
-          <span>{error}</span>
+          <div className="space-y-0.5">
+            <p className="font-semibold">
+              Live air quality data is temporarily unavailable.
+            </p>
+            <p className="text-amber-200/90">
+              {lang === 'hi'
+                ? `पिछली सफल रीडिंग दिखाई जा रही है (${observedText} · ${freshness})।`
+                : `Showing last successful reading from ${observedText} (${freshness}) — clearly marked as an older cached reading.`}
+            </p>
+          </div>
           <button
             type="button"
             onClick={onRetry}
-            className="font-semibold text-[#67E8F9] underline hover:no-underline"
+            className="inline-flex min-h-[36px] items-center rounded-lg border border-[#67E8F9]/50 bg-[#0B0A16] px-3 py-1 font-semibold text-[#67E8F9] hover:bg-[#14163F]"
           >
             {t(lang, 'retryFetch')}
           </button>
@@ -457,7 +491,8 @@ export function LiveOverviewCard({
           />
           <div className="min-w-0 flex-1 space-y-1.5">
             <p className="font-mono-tabular text-[11px] font-semibold uppercase tracking-wider text-[#67E8F9]">
-              {t(lang, 'usAqiLabel')}
+              {t(lang, 'usAqiLabel')} · Scale 0–500
+              {snapshot.usAqiDerivedFromPm25 ? ' (EPA PM2.5)' : ''}
             </p>
             <p className="font-display text-xl font-semibold text-white leading-tight">
               {lang === 'hi' ? usLabel.hi : usLabel.en}
@@ -691,7 +726,10 @@ export function LiveOverviewCard({
         {pollutantView === 'bento' ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {pollutantCards.map((item) => {
-              const barPct = Math.min(100, Math.max(8, Math.round((item.value / item.refMax) * 100)));
+              const barPct =
+                item.value === null
+                  ? 0
+                  : Math.min(100, Math.max(8, Math.round((item.value / item.refMax) * 100)));
               return (
                 <div
                   key={item.name}
@@ -703,14 +741,20 @@ export function LiveOverviewCard({
                       <span className="font-mono-tabular text-[10px] text-[#A7A3C7]">{item.unit}</span>
                     </div>
                     <p className="mt-1.5 font-mono-tabular text-2xl font-extrabold tracking-tight text-[#E6EDF7]">
-                      {item.value}
+                      {item.value === null ? '—' : item.value}
                     </p>
                   </div>
                   <div className="mt-3 space-y-1.5">
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
                       <div className={`h-full rounded-full ${item.barFill}`} style={{ width: `${barPct}%` }} />
                     </div>
-                    <p className="text-[10px] font-medium text-[#A7A3C7] leading-snug">{item.note}</p>
+                    <p className="text-[10px] font-medium text-[#A7A3C7] leading-snug">
+                      {item.value === null
+                        ? lang === 'hi'
+                          ? 'डेटा उपलब्ध नहीं'
+                          : 'Not reported for this hour'
+                        : item.note}
+                    </p>
                   </div>
                 </div>
               );
@@ -732,7 +776,7 @@ export function LiveOverviewCard({
                   <tr key={row.name} className="hover:bg-[#14163F]/70">
                     <td className="px-4 py-2.5 font-semibold text-[#E6EDF7]">{row.name}</td>
                     <td className="px-4 py-2.5 text-right font-mono-tabular font-semibold text-[#67E8F9]">
-                      {row.value} {row.unit}
+                      {row.value === null ? 'Not reported' : `${row.value} ${row.unit}`}
                     </td>
                     <td className="px-4 py-2.5 text-[#A7A3C7] font-mono-tabular">
                       Open-Meteo · {freshness}

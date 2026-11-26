@@ -58,13 +58,13 @@ export interface HouseholdProfile {
 
 export interface PollutantReadings {
   pm25: number;
-  pm10: number;
+  pm10: number | null;
   usAqi: number;
   europeanAqi?: number | null;
-  no2: number;
-  o3: number;
-  so2: number;
-  co: number;
+  no2: number | null;
+  o3: number | null;
+  so2: number | null;
+  co: number | null;
   dustUgM3?: number | null;
   uvIndex?: number | null;
 }
@@ -85,12 +85,12 @@ export interface HourlyForecastPoint {
   timeIso: string;
   hourLabel: string;
   pm25: number;
-  pm10: number;
+  pm10: number | null;
   usAqi: number;
-  no2: number;
-  o3: number;
-  so2: number;
-  co: number;
+  no2: number | null;
+  o3: number | null;
+  so2: number | null;
+  co: number | null;
   temperatureC: number | null;
   humidityPct: number | null;
   windSpeedKmh: number | null;
@@ -111,7 +111,7 @@ export interface CpcbEvaluation {
   labelHi: string;
   estimatedSubIndex: number;
   pm25SubIndex: number;
-  pm10SubIndex: number;
+  pm10SubIndex: number | null;
   dominantPmPollutant: 'PM2.5' | 'PM10';
   attributionLabelEn: string;
   attributionLabelHi: string;
@@ -160,6 +160,8 @@ export interface AirQualitySnapshot {
   worstWindow: TimeWindowSummary;
   verification?: AqiVerificationReport;
   fromCache: boolean;
+  isStale?: boolean;
+  usAqiDerivedFromPm25?: boolean;
 }
 
 export interface ExplainedRecommendation {

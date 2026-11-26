@@ -63,11 +63,14 @@ export function getPm10CpcbCategory(pm10: number): BreakpointRow {
   return computeSubIndex(pm10, PM10_BREAKPOINTS).row;
 }
 
-export function estimateCpcbFromPm(pm25: number, pm10: number): CpcbEvaluation {
+export function estimateCpcbFromPm(pm25: number, pm10: number | null): CpcbEvaluation {
   const pm25Res = computeSubIndex(pm25, PM25_BREAKPOINTS);
-  const pm10Res = computeSubIndex(pm10, PM10_BREAKPOINTS);
+  const pm10Res =
+    pm10 !== null && Number.isFinite(pm10) && pm10 >= 0
+      ? computeSubIndex(pm10, PM10_BREAKPOINTS)
+      : null;
 
-  const pm25Wins = pm25Res.subIndex >= pm10Res.subIndex;
+  const pm25Wins = !pm10Res || pm25Res.subIndex >= pm10Res.subIndex;
   const winner = pm25Wins ? pm25Res : pm10Res;
 
   return {
@@ -76,7 +79,7 @@ export function estimateCpcbFromPm(pm25: number, pm10: number): CpcbEvaluation {
     labelHi: winner.row.labelHi,
     estimatedSubIndex: winner.subIndex,
     pm25SubIndex: pm25Res.subIndex,
-    pm10SubIndex: pm10Res.subIndex,
+    pm10SubIndex: pm10Res ? pm10Res.subIndex : null,
     dominantPmPollutant: pm25Wins ? 'PM2.5' : 'PM10',
     attributionLabelEn: 'Estimated from model PM data (CPCB breakpoints)',
     attributionLabelHi: 'मॉडल PM डेटा से अनुमानित (CPCB मानक)',
@@ -84,16 +87,23 @@ export function estimateCpcbFromPm(pm25: number, pm10: number): CpcbEvaluation {
 }
 
 export function getDominantPollutantName(readings: PollutantReadings): string {
-  // Compare pollutants normalized to CPCB / WHO 24h-equivalent reference levels
-  const ratios: Array<{ name: string; ratio: number }> = [
-    { name: 'PM2.5', ratio: readings.pm25 / 60 },
-    { name: 'PM10', ratio: readings.pm10 / 100 },
-    { name: 'NO₂', ratio: readings.no2 / 80 },
-    { name: 'O₃', ratio: readings.o3 / 100 },
-    { name: 'SO₂', ratio: readings.so2 / 80 },
-    { name: 'CO', ratio: readings.co / 2000 },
+  // Compare available pollutants normalized to CPCB / WHO 24h-equivalent reference levels
+  const candidates: Array<{ name: string; value: number | null; ref: number }> = [
+    { name: 'PM2.5', value: readings.pm25, ref: 60 },
+    { name: 'PM10', value: readings.pm10, ref: 100 },
+    { name: 'NO₂', value: readings.no2, ref: 80 },
+    { name: 'O₃', value: readings.o3, ref: 100 },
+    { name: 'SO₂', value: readings.so2, ref: 80 },
+    { name: 'CO', value: readings.co, ref: 2000 },
   ];
 
+  const ratios = candidates
+    .filter((item): item is { name: string; value: number; ref: number } =>
+      item.value !== null && Number.isFinite(item.value) && item.value >= 0
+    )
+    .map((item) => ({ name: item.name, ratio: item.value / item.ref }));
+
+  if (ratios.length === 0) return 'PM2.5';
   ratios.sort((a, b) => b.ratio - a.ratio);
   return ratios[0].name;
 }

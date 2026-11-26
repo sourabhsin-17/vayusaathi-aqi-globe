@@ -8,6 +8,7 @@ import {
   LocateFixed,
   Search,
   Users,
+  X,
 } from 'lucide-react';
 import { searchGlobalCities } from '../lib/airQualityService';
 import { ALL_MONITORED_CITIES } from '../lib/aqiCities';
@@ -50,6 +51,7 @@ export function SetupWizard({
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<IndianLocation[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [geoStatus, setGeoStatus] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(false);
@@ -62,23 +64,39 @@ export function SetupWizard({
     if (trimmed.length < 2) {
       setSearchResults([]);
       setSearchError(null);
+      setHasSearched(false);
+      setIsSearching(false);
       return;
     }
 
+    const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       setIsSearching(true);
       setSearchError(null);
       try {
-        const cities = await searchGlobalCities(trimmed, { scope: 'all' });
-        setSearchResults(cities);
+        const cities = await searchGlobalCities(trimmed, {
+          scope: 'all',
+          signal: controller.signal,
+        });
+        if (!controller.signal.aborted) {
+          setSearchResults(cities);
+          setHasSearched(true);
+        }
       } catch (err) {
+        if (controller.signal.aborted) return;
         setSearchError(err instanceof Error ? err.message : 'City search failed.');
+        setHasSearched(true);
       } finally {
-        setIsSearching(false);
+        if (!controller.signal.aborted) {
+          setIsSearching(false);
+        }
       }
     }, 350);
 
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, [query]);
 
   const handleGeolocate = () => {
@@ -355,18 +373,40 @@ export function SetupWizard({
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder={t(lang, 'searchCityPlaceholder')}
-                    className="w-full min-h-[44px] rounded-xl border border-white/12 bg-[#0B0A16] pl-10 pr-4 text-sm text-[#E6EDF7] placeholder:text-[#A7A3C7]/70 focus:border-[#67E8F9] focus:bg-[#14122E] focus:outline-none"
+                    className="w-full min-h-[44px] rounded-xl border border-white/12 bg-[#0B0A16] pl-10 pr-10 text-sm text-[#E6EDF7] placeholder:text-[#A7A3C7]/70 focus:border-[#67E8F9] focus:bg-[#14122E] focus:outline-none"
                   />
+                  {query ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuery('');
+                        setSearchResults([]);
+                        setHasSearched(false);
+                        setSearchError(null);
+                      }}
+                      aria-label={lang === 'hi' ? 'खोज साफ़ करें' : 'Clear search input'}
+                      className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#A7A3C7] hover:bg-white/10 hover:text-white"
+                    >
+                      <X className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  ) : null}
                 </div>
 
                 {isSearching ? (
-                  <p className="text-xs text-[#67E8F9]">
+                  <p role="status" className="text-xs text-[#67E8F9]">
                     {lang === 'hi' ? 'दुनिया भर के स्थान खोजे जा रहे हैं...' : 'Searching worldwide locations...'}
                   </p>
                 ) : null}
                 {searchError ? (
                   <p role="alert" className="text-xs text-rose-300">
                     {searchError}
+                  </p>
+                ) : null}
+                {!isSearching && !searchError && hasSearched && query.trim().length >= 2 && searchResults.length === 0 ? (
+                  <p role="status" className="rounded-xl border border-white/10 bg-[#0B0A16] px-3.5 py-2.5 text-xs text-[#A7A3C7]">
+                    {lang === 'hi'
+                      ? `"${query.trim()}" के लिए कोई शहर नहीं मिला। कोई अन्य वर्तनी आज़माएं।`
+                      : `No cities found for "${query.trim()}". Try another city or spelling.`}
                   </p>
                 ) : null}
                 {searchResults.length > 0 ? (
@@ -382,6 +422,7 @@ export function SetupWizard({
                             onChangeProfile({ ...profile, location: city });
                             setQuery('');
                             setSearchResults([]);
+                            setHasSearched(false);
                           }}
                           className="flex w-full min-h-[44px] items-center justify-between px-4 py-2 text-left text-sm hover:bg-[#14163F]"
                         >

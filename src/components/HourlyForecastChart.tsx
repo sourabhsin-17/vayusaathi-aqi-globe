@@ -192,7 +192,7 @@ export default function HourlyForecastChart({
                       {point.pm25}
                     </td>
                     <td className="px-3.5 py-2 text-right font-mono-tabular text-[#A7A3C7]">
-                      {point.pm10}
+                      {point.pm10 !== null ? point.pm10 : '—'}
                     </td>
                     <td className="px-3.5 py-2 text-right font-mono-tabular font-semibold text-[#67E8F9]">
                       {point.usAqi}

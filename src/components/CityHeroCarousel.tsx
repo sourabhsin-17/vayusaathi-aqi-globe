@@ -11,6 +11,7 @@ import {
   Play,
   RefreshCw,
   Search,
+  X,
 } from 'lucide-react';
 import { ALL_MONITORED_CITIES } from '../lib/aqiCities';
 import { formatFreshnessLabel, searchGlobalCities } from '../lib/airQualityService';
@@ -78,6 +79,7 @@ export function CityHeroCarousel({
   const [cityQuery, setCityQuery] = useState('');
   const [searchResults, setSearchResults] = useState<IndianLocation[]>([]);
   const [searching, setSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -105,21 +107,39 @@ export function CityHeroCarousel({
     if (trimmed.length < 2) {
       setSearchResults([]);
       setSearchError(null);
+      setHasSearched(false);
+      setSearching(false);
       return;
     }
+
+    const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       setSearching(true);
       setSearchError(null);
       try {
-        const hits = await searchGlobalCities(trimmed, { scope: 'all' });
-        setSearchResults(hits);
+        const hits = await searchGlobalCities(trimmed, {
+          scope: 'all',
+          signal: controller.signal,
+        });
+        if (!controller.signal.aborted) {
+          setSearchResults(hits);
+          setHasSearched(true);
+        }
       } catch (err) {
+        if (controller.signal.aborted) return;
         setSearchError(err instanceof Error ? err.message : 'Search failed.');
+        setHasSearched(true);
       } finally {
-        setSearching(false);
+        if (!controller.signal.aborted) {
+          setSearching(false);
+        }
       }
     }, 320);
-    return () => window.clearTimeout(timer);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, [cityQuery]);
 
   const currentSlide = FEATURED_CITY_SLIDES[slideIndex] ?? FEATURED_CITY_SLIDES[0];
@@ -479,18 +499,40 @@ export function CityHeroCarousel({
                   placeholder={
                     lang === 'hi' ? 'कोई भी शहर खोजें...' : 'Search any city worldwide...'
                   }
-                  className="min-h-[42px] w-full rounded-xl border border-white/12 bg-[#0B0A16] pl-8 pr-3 text-xs text-[#E6EDF7] placeholder:text-[#A7A3C7]/70 focus:border-[#67E8F9] focus:bg-[#14122E] focus:outline-none"
+                  className="min-h-[42px] w-full rounded-xl border border-white/12 bg-[#0B0A16] pl-8 pr-9 text-xs text-[#E6EDF7] placeholder:text-[#A7A3C7]/70 focus:border-[#67E8F9] focus:bg-[#14122E] focus:outline-none"
                 />
+                {cityQuery ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCityQuery('');
+                      setSearchResults([]);
+                      setHasSearched(false);
+                      setSearchError(null);
+                    }}
+                    aria-label={lang === 'hi' ? 'खोज साफ़ करें' : 'Clear city search'}
+                    className="absolute right-1.5 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#A7A3C7] hover:bg-white/10 hover:text-white"
+                  >
+                    <X className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                ) : null}
               </div>
 
               {searching ? (
-                <p className="text-[11px] text-[#A7A3C7]">
+                <p role="status" className="text-[11px] text-[#A7A3C7]">
                   {lang === 'hi' ? 'खोज रहे हैं...' : 'Searching...'}
                 </p>
               ) : null}
               {searchError ? (
                 <p role="alert" className="text-[11px] text-rose-300">
                   {searchError}
+                </p>
+              ) : null}
+              {!searching && !searchError && hasSearched && cityQuery.trim().length >= 2 && searchResults.length === 0 ? (
+                <p role="status" className="rounded-xl border border-white/10 bg-[#0B0A16] px-3 py-2 text-[11px] text-[#A7A3C7]">
+                  {lang === 'hi'
+                    ? `"${cityQuery.trim()}" के लिए कोई शहर नहीं मिला।`
+                    : `No matching cities found for "${cityQuery.trim()}".`}
                 </p>
               ) : null}
               {searchResults.length > 0 ? (
@@ -506,8 +548,9 @@ export function CityHeroCarousel({
                           onSelectLocation(city);
                           setCityQuery('');
                           setSearchResults([]);
+                          setHasSearched(false);
                         }}
-                        className="flex w-full min-h-[40px] items-center justify-between gap-2 px-3 py-2 text-left text-xs hover:bg-[#14163F]"
+                        className="flex w-full min-h-[42px] items-center justify-between gap-2 px-3 py-2 text-left text-xs hover:bg-[#14163F]"
                       >
                         <span className="truncate font-semibold text-[#E6EDF7]">
                           {city.name}{' '}

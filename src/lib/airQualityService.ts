@@ -19,7 +19,9 @@ import type {
 
 export const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const CACHE_TTL_MS = AUTO_REFRESH_INTERVAL_MS;
-const CACHE_PREFIX = 'vayusaathi_aq_cache_v2_';
+const MAX_OLDER_SNAPSHOT_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours max age for labeled fallback
+const CACHE_PREFIX = 'vayusaathi_aq_cache_v3_';
+const DEFAULT_FETCH_TIMEOUT_MS = 10000;
 
 interface CacheEntry {
   cachedAtMs: number;
@@ -30,27 +32,25 @@ const memoryCache = new Map<string, CacheEntry>();
 
 export const DATA_SOURCE_NAME = 'Open-Meteo Air Quality & Weather API (CAMS/ECMWF nearest grid)';
 
+export const LIVE_UNAVAILABLE_MESSAGE = 'Live air quality data is temporarily unavailable.';
+
 function getCacheKey(lat: number, lon: number): string {
   return `${CACHE_PREFIX}${lat.toFixed(2)}_${lon.toFixed(2)}`;
 }
 
-function readCachedSnapshot(lat: number, lon: number): AirQualitySnapshot | null {
+function readCacheEntry(lat: number, lon: number): CacheEntry | null {
   const key = getCacheKey(lat, lon);
-  const now = Date.now();
-
   const mem = memoryCache.get(key);
-  if (mem && now - mem.cachedAtMs < CACHE_TTL_MS) {
-    return { ...mem.snapshot, fromCache: true };
-  }
+  if (mem) return mem;
 
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
       const raw = window.localStorage.getItem(key);
       if (raw) {
         const parsed = JSON.parse(raw) as CacheEntry;
-        if (parsed && typeof parsed.cachedAtMs === 'number' && now - parsed.cachedAtMs < CACHE_TTL_MS) {
+        if (parsed && typeof parsed.cachedAtMs === 'number' && parsed.snapshot?.current) {
           memoryCache.set(key, parsed);
-          return { ...parsed.snapshot, fromCache: true };
+          return parsed;
         }
       }
     } catch {
@@ -60,11 +60,38 @@ function readCachedSnapshot(lat: number, lon: number): AirQualitySnapshot | null
   return null;
 }
 
+function readCachedSnapshot(lat: number, lon: number): AirQualitySnapshot | null {
+  const entry = readCacheEntry(lat, lon);
+  if (!entry) return null;
+  if (Date.now() - entry.cachedAtMs < CACHE_TTL_MS) {
+    return { ...entry.snapshot, fromCache: true, isStale: false };
+  }
+  return null;
+}
+
+/**
+ * Returns a previously successful cached reading ONLY for matching coordinates.
+ * Used strictly as an explicitly labeled older-reading fallback when live API calls fail.
+ */
+export function getLastKnownSnapshot(location: IndianLocation): AirQualitySnapshot | null {
+  const entry = readCacheEntry(location.latitude, location.longitude);
+  if (!entry) return null;
+  if (Date.now() - entry.cachedAtMs > MAX_OLDER_SNAPSHOT_AGE_MS) {
+    return null;
+  }
+  return {
+    ...entry.snapshot,
+    location,
+    fromCache: true,
+    isStale: true,
+  };
+}
+
 function writeCachedSnapshot(lat: number, lon: number, snapshot: AirQualitySnapshot): void {
   const key = getCacheKey(lat, lon);
   const entry: CacheEntry = {
     cachedAtMs: Date.now(),
-    snapshot: { ...snapshot, fromCache: false },
+    snapshot: { ...snapshot, fromCache: false, isStale: false },
   };
   memoryCache.set(key, entry);
 
@@ -79,11 +106,101 @@ function writeCachedSnapshot(lat: number, lon: number, snapshot: AirQualitySnaps
 
 export function clearAirQualityCache(): void {
   memoryCache.clear();
+  batchCityCache.clear();
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < window.localStorage.length; i += 1) {
+        const k = window.localStorage.key(i);
+        if (k && k.startsWith(CACHE_PREFIX)) {
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach((k) => window.localStorage.removeItem(k));
+    } catch {
+      // Ignore storage errors
+    }
+  }
+}
+
+function linkAbortSignals(
+  timeoutMs: number,
+  externalSignal?: AbortSignal
+): { signal: AbortSignal; cleanup: () => void; didTimeout: () => boolean } {
+  const controller = new AbortController();
+  let timedOut = false;
+
+  const onExternalAbort = () => {
+    controller.abort(externalSignal?.reason);
+  };
+
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort(externalSignal.reason);
+    } else {
+      externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+    }
+  }
+
+  const timer = globalThis.setTimeout(() => {
+    timedOut = true;
+    controller.abort(new Error('Request timed out'));
+  }, timeoutMs);
+
+  return {
+    signal: controller.signal,
+    didTimeout: () => timedOut,
+    cleanup: () => {
+      globalThis.clearTimeout(timer);
+      if (externalSignal) {
+        externalSignal.removeEventListener('abort', onExternalAbort);
+      }
+    },
+  };
+}
+
+async function fetchJsonWithTimeout(
+  url: string,
+  options: { timeoutMs?: number; signal?: AbortSignal; label: string }
+): Promise<unknown> {
+  const { signal, cleanup, didTimeout } = linkAbortSignals(
+    options.timeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS,
+    options.signal
+  );
+
+  try {
+    const res = await fetch(url, { signal });
+    if (res.status === 429) {
+      throw new Error(`${options.label} rate limit reached. Please retry in a moment.`);
+    }
+    if (!res.ok) {
+      throw new Error(`${options.label} failed (HTTP ${res.status}).`);
+    }
+
+    try {
+      return (await res.json()) as unknown;
+    } catch {
+      throw new Error(`${options.label} returned malformed JSON.`);
+    }
+  } catch (err) {
+    if (didTimeout()) {
+      throw new Error(`${options.label} timed out. Please retry.`);
+    }
+    throw err;
+  } finally {
+    cleanup();
+  }
+}
+
+function sanitizeNullableNonNegative(val: number | null | undefined, maxVal: number, decimals = 1): number | null {
+  if (val === null || val === undefined || !Number.isFinite(val)) return null;
+  if (val < 0 || val > maxVal) return null;
+  return decimals === 0 ? Math.round(val) : Number(val.toFixed(decimals));
 }
 
 export async function searchIndianCities(
   query: string,
-  options?: { scope?: 'all' | 'india' }
+  options?: { scope?: 'all' | 'india'; signal?: AbortSignal }
 ): Promise<IndianLocation[]> {
   const trimmed = query.trim();
   if (trimmed.length < 2) return [];
@@ -94,12 +211,12 @@ export async function searchIndianCities(
   url.searchParams.set('language', 'en');
   url.searchParams.set('format', 'json');
 
-  const res = await fetch(url.toString());
-  if (!res.ok) {
-    throw new Error(`City search failed (HTTP ${res.status}).`);
-  }
+  const rawJson = await fetchJsonWithTimeout(url.toString(), {
+    timeoutMs: 8000,
+    signal: options?.signal,
+    label: 'City search',
+  });
 
-  const rawJson: unknown = await res.json();
   const parsed = openMeteoGeocodingSchema.safeParse(rawJson);
   if (!parsed.success) {
     throw new Error('Unexpected response format from Open-Meteo city search.');
@@ -143,7 +260,6 @@ function decodeWmoWeather(code: number | null | undefined): { en: string; hi: st
 }
 
 function formatHourLabel(isoTime: string): string {
-  // Open-Meteo returns YYYY-MM-DDTHH:MM in local timezone when timezone=auto
   const parts = isoTime.split('T');
   if (parts.length !== 2) return isoTime;
   const [hourStr] = parts[1].split(':');
@@ -205,7 +321,8 @@ function computeMedian(values: number[]): number | null {
 export async function fetchSensorCommunityCrossCheck(
   lat: number,
   lon: number,
-  radiusKm = 35
+  radiusKm = 35,
+  externalSignal?: AbortSignal
 ): Promise<GroundSensorCrossCheck> {
   const baseUnavailable: GroundSensorCrossCheck = {
     providerName: 'Sensor.Community Network',
@@ -222,12 +339,11 @@ export async function fetchSensorCommunityCrossCheck(
     return baseUnavailable;
   }
 
-  const controller = new AbortController();
-  const timeoutId = globalThis.setTimeout(() => controller.abort(), 3500);
+  const { signal, cleanup } = linkAbortSignals(3500, externalSignal);
 
   try {
     const url = `https://data.sensor.community/airrohr/v1/filter/area=${lat.toFixed(3)},${lon.toFixed(3)},${radiusKm}`;
-    const res = await fetch(url, { signal: controller.signal });
+    const res = await fetch(url, { signal });
     if (!res.ok) return baseUnavailable;
 
     const rawJson: unknown = await res.json();
@@ -288,7 +404,7 @@ export async function fetchSensorCommunityCrossCheck(
   } catch {
     return baseUnavailable;
   } finally {
-    globalThis.clearTimeout(timeoutId);
+    cleanup();
   }
 }
 
@@ -347,12 +463,11 @@ export function buildVerificationReport(
 
 export async function fetchLiveAirAndWeather(
   location: IndianLocation,
-  options?: { forceRefresh?: boolean }
+  options?: { forceRefresh?: boolean; signal?: AbortSignal }
 ): Promise<AirQualitySnapshot> {
   if (!options?.forceRefresh) {
     const cached = readCachedSnapshot(location.latitude, location.longitude);
     if (cached) {
-      // Ensure location label matches caller selection
       return { ...cached, location };
     }
   }
@@ -384,100 +499,105 @@ export async function fetchLiveAirAndWeather(
   weatherUrl.searchParams.set('timezone', 'auto');
   weatherUrl.searchParams.set('forecast_days', '2');
 
-  const [aqRes, weatherRes, groundCheck] = await Promise.all([
-    fetch(aqUrl.toString()),
-    fetch(weatherUrl.toString()),
-    fetchSensorCommunityCrossCheck(location.latitude, location.longitude, 35),
-  ]);
-
-  if (!aqRes.ok) {
-    throw new Error(`Live air-quality fetch failed (HTTP ${aqRes.status}). Please retry.`);
-  }
-  if (!weatherRes.ok) {
-    throw new Error(`Live weather fetch failed (HTTP ${weatherRes.status}). Please retry.`);
-  }
-
-  const [aqJson, weatherJson]: [unknown, unknown] = await Promise.all([
-    aqRes.json(),
-    weatherRes.json(),
+  const [aqJson, weatherJson, groundCheck] = await Promise.all([
+    fetchJsonWithTimeout(aqUrl.toString(), {
+      timeoutMs: DEFAULT_FETCH_TIMEOUT_MS,
+      signal: options?.signal,
+      label: 'Live air-quality telemetry',
+    }),
+    fetchJsonWithTimeout(weatherUrl.toString(), {
+      timeoutMs: DEFAULT_FETCH_TIMEOUT_MS,
+      signal: options?.signal,
+      label: 'Live weather telemetry',
+    }),
+    fetchSensorCommunityCrossCheck(location.latitude, location.longitude, 35, options?.signal),
   ]);
 
   const aqParsed = openMeteoAirQualitySchema.safeParse(aqJson);
   if (!aqParsed.success) {
-    throw new Error('Live air-quality API returned incomplete or invalid measurements.');
+    throw new Error(LIVE_UNAVAILABLE_MESSAGE);
   }
 
   const weatherParsed = openMeteoWeatherSchema.safeParse(weatherJson);
   if (!weatherParsed.success) {
-    throw new Error('Live weather API returned incomplete or invalid measurements.');
+    throw new Error(LIVE_UNAVAILABLE_MESSAGE);
   }
 
   const aq = aqParsed.data;
   const wx = weatherParsed.data;
 
-  const currentPm25 = aq.current.pm2_5 ?? 0;
-  const currentPm10 = aq.current.pm10 ?? 0;
-  const currentUsAqi = aq.current.us_aqi ?? 0;
-
-  if (aq.current.pm2_5 === null && aq.current.us_aqi === null) {
-    throw new Error('Live air-quality readings are currently unavailable for these coordinates.');
+  // Never fabricate PM2.5 or AQI as 0 when live measurements are absent
+  if (aq.current.pm2_5 === null) {
+    throw new Error(LIVE_UNAVAILABLE_MESSAGE);
   }
 
-  // Align hourly slice starting from current observation hour
+  const currentPm25 = Number(aq.current.pm2_5.toFixed(1));
+  const currentPm10 = sanitizeNullableNonNegative(aq.current.pm10, 3000, 1);
+  const usAqiDerivedFromPm25 = aq.current.us_aqi === null;
+  const currentUsAqi =
+    aq.current.us_aqi !== null
+      ? Math.round(aq.current.us_aqi)
+      : computeUsAqiFromPm25(currentPm25);
+
   const currentHourPrefix = aq.current.time.slice(0, 13);
-  const startIdx = Math.max(
-    0,
-    aq.hourly.time.findIndex((t) => t.slice(0, 13) >= currentHourPrefix)
-  );
+  const foundIdx = aq.hourly.time.findIndex((t) => t.slice(0, 13) >= currentHourPrefix);
+  const startIdx = foundIdx >= 0 ? foundIdx : 0;
 
   const weatherByTime = new Map<string, { temp: number | null; hum: number | null; wind: number | null }>();
   wx.hourly.time.forEach((timeIso, idx) => {
+    const tVal = wx.hourly.temperature_2m[idx];
+    const hVal = wx.hourly.relative_humidity_2m[idx];
+    const wVal = wx.hourly.wind_speed_10m[idx];
     weatherByTime.set(timeIso, {
-      temp: wx.hourly.temperature_2m[idx] ?? null,
-      hum: wx.hourly.relative_humidity_2m[idx] ?? null,
-      wind: wx.hourly.wind_speed_10m[idx] ?? null,
+      temp: tVal !== null && tVal !== undefined && tVal >= -90 && tVal <= 65 ? tVal : null,
+      hum: hVal !== null && hVal !== undefined && hVal >= 0 && hVal <= 100 ? hVal : null,
+      wind: wVal !== null && wVal !== undefined && wVal >= 0 && wVal <= 500 ? wVal : null,
     });
   });
 
-  const hourly48: HourlyForecastPoint[] = aq.hourly.time
-    .slice(startIdx, startIdx + 48)
-    .map((timeIso, offset) => {
-      const idx = startIdx + offset;
-      const w = weatherByTime.get(timeIso);
-      return {
-        timeIso,
-        hourLabel: formatHourLabel(timeIso),
-        pm25: Number((aq.hourly.pm2_5[idx] ?? currentPm25).toFixed(1)),
-        pm10: Number((aq.hourly.pm10[idx] ?? currentPm10).toFixed(1)),
-        usAqi: Math.round(aq.hourly.us_aqi[idx] ?? currentUsAqi),
-        no2: Number((aq.hourly.nitrogen_dioxide[idx] ?? 0).toFixed(1)),
-        o3: Number((aq.hourly.ozone[idx] ?? 0).toFixed(1)),
-        so2: Number((aq.hourly.sulphur_dioxide[idx] ?? 0).toFixed(1)),
-        co: Number((aq.hourly.carbon_monoxide[idx] ?? 0).toFixed(0)),
-        temperatureC: w?.temp ?? null,
-        humidityPct: w?.hum ?? null,
-        windSpeedKmh: w?.wind ?? null,
-      };
+  const hourly48: HourlyForecastPoint[] = [];
+  const rawSlice = aq.hourly.time.slice(startIdx, startIdx + 48);
+  for (let offset = 0; offset < rawSlice.length; offset += 1) {
+    const idx = startIdx + offset;
+    const timeIso = rawSlice[offset];
+    const hrPm25 = sanitizeNullableNonNegative(aq.hourly.pm2_5[idx], 2000, 1);
+    if (hrPm25 === null) continue; // Skip missing/corrupt forecast hours rather than inventing values
+
+    const hrUsAqi = sanitizeNullableNonNegative(aq.hourly.us_aqi[idx], 1000, 0);
+    const w = weatherByTime.get(timeIso);
+
+    hourly48.push({
+      timeIso,
+      hourLabel: formatHourLabel(timeIso),
+      pm25: hrPm25,
+      pm10: sanitizeNullableNonNegative(aq.hourly.pm10[idx], 3000, 1),
+      usAqi: hrUsAqi !== null ? hrUsAqi : computeUsAqiFromPm25(hrPm25),
+      no2: sanitizeNullableNonNegative(aq.hourly.nitrogen_dioxide[idx], 5000, 1),
+      o3: sanitizeNullableNonNegative(aq.hourly.ozone[idx], 2000, 1),
+      so2: sanitizeNullableNonNegative(aq.hourly.sulphur_dioxide[idx], 5000, 1),
+      co: sanitizeNullableNonNegative(aq.hourly.carbon_monoxide[idx], 100000, 0),
+      temperatureC: w?.temp ?? null,
+      humidityPct: w?.hum ?? null,
+      windSpeedKmh: w?.wind ?? null,
     });
+  }
+
+  if (hourly48.length === 0) {
+    throw new Error(LIVE_UNAVAILABLE_MESSAGE);
+  }
 
   const hourly24 = hourly48.slice(0, 24);
-  const currentReadings = {
-    pm25: Number(currentPm25.toFixed(1)),
-    pm10: Number(currentPm10.toFixed(1)),
-    usAqi: Math.round(currentUsAqi),
-    europeanAqi: aq.current.european_aqi !== undefined && aq.current.european_aqi !== null
-      ? Math.round(aq.current.european_aqi)
-      : null,
-    no2: Number((aq.current.nitrogen_dioxide ?? 0).toFixed(1)),
-    o3: Number((aq.current.ozone ?? 0).toFixed(1)),
-    so2: Number((aq.current.sulphur_dioxide ?? 0).toFixed(1)),
-    co: Number((aq.current.carbon_monoxide ?? 0).toFixed(0)),
-    dustUgM3: aq.current.dust !== undefined && aq.current.dust !== null
-      ? Number(aq.current.dust.toFixed(1))
-      : null,
-    uvIndex: aq.current.uv_index !== undefined && aq.current.uv_index !== null
-      ? Number(aq.current.uv_index.toFixed(1))
-      : null,
+  const currentReadings: PollutantReadings = {
+    pm25: currentPm25,
+    pm10: currentPm10,
+    usAqi: currentUsAqi,
+    europeanAqi: sanitizeNullableNonNegative(aq.current.european_aqi, 1000, 0),
+    no2: sanitizeNullableNonNegative(aq.current.nitrogen_dioxide, 5000, 1),
+    o3: sanitizeNullableNonNegative(aq.current.ozone, 2000, 1),
+    so2: sanitizeNullableNonNegative(aq.current.sulphur_dioxide, 5000, 1),
+    co: sanitizeNullableNonNegative(aq.current.carbon_monoxide, 100000, 0),
+    dustUgM3: sanitizeNullableNonNegative(aq.current.dust, 5000, 1),
+    uvIndex: sanitizeNullableNonNegative(aq.current.uv_index, 25, 1),
   };
 
   const wmo = decodeWmoWeather(wx.current.weather_code);
@@ -522,6 +642,8 @@ export async function fetchLiveAirAndWeather(
     worstWindow: findRollingWindow(hourly24, 'worst'),
     verification,
     fromCache: false,
+    isStale: false,
+    usAqiDerivedFromPm25,
   };
 
   writeCachedSnapshot(location.latitude, location.longitude, snapshot);
@@ -529,7 +651,6 @@ export async function fetchLiveAirAndWeather(
 }
 
 export function formatObservationTimestamp(iso: string): string {
-  // Open-Meteo local time string like "2026-11-25T14:00"
   if (!iso) return '--';
   const [datePart, timePart] = iso.split('T');
   if (!timePart) return iso;
@@ -555,7 +676,7 @@ export interface LiveCityAqiEntry {
   cityId: string;
   usAqi: number;
   pm25: number;
-  pm10: number;
+  pm10: number | null;
   cpcb: CpcbEvaluation;
   observationTimestampIso: string;
   fetchedAtIso: string;
@@ -566,7 +687,7 @@ const batchCityCache = new Map<string, { cachedAtMs: number; entry: LiveCityAqiE
 
 export async function fetchBatchCitiesLiveAqi(
   cities: IndianLocation[],
-  options?: { forceRefresh?: boolean }
+  options?: { forceRefresh?: boolean; signal?: AbortSignal }
 ): Promise<Record<string, LiveCityAqiEntry>> {
   const result: Record<string, LiveCityAqiEntry> = {};
   const now = Date.now();
@@ -587,7 +708,6 @@ export async function fetchBatchCitiesLiveAqi(
     return result;
   }
 
-  // Open-Meteo supports comma-separated latitude/longitude lists (chunked safely in batches of 20)
   const chunkSize = 20;
   for (let i = 0; i < missing.length; i += chunkSize) {
     const chunk = missing.slice(i, i + chunkSize);
@@ -603,12 +723,12 @@ export async function fetchBatchCitiesLiveAqi(
     url.searchParams.set('current', 'us_aqi,pm2_5,pm10');
     url.searchParams.set('timezone', 'auto');
 
-    const res = await fetch(url.toString());
-    if (!res.ok) {
-      throw new Error(`Batch station AQI fetch failed (HTTP ${res.status}). Please retry.`);
-    }
+    const raw = await fetchJsonWithTimeout(url.toString(), {
+      timeoutMs: DEFAULT_FETCH_TIMEOUT_MS,
+      signal: options?.signal,
+      label: 'Batch station AQI',
+    });
 
-    const raw: unknown = await res.json();
     const items = Array.isArray(raw) ? raw : [raw];
     const fetchedAtIso = new Date().toISOString();
 
@@ -624,10 +744,13 @@ export async function fetchBatchCitiesLiveAqi(
           }
         | undefined;
       if (!item?.current) return;
-      const pm25 = Number((item.current.pm2_5 ?? 0).toFixed(1));
-      const pm10 = Number((item.current.pm10 ?? 0).toFixed(1));
-      const usAqi = Math.round(item.current.us_aqi ?? 0);
-      if (item.current.pm2_5 === null && item.current.us_aqi === null) return;
+
+      const pm25 = sanitizeNullableNonNegative(item.current.pm2_5, 2000, 1);
+      if (pm25 === null) return;
+
+      const pm10 = sanitizeNullableNonNegative(item.current.pm10, 3000, 1);
+      const rawUsAqi = sanitizeNullableNonNegative(item.current.us_aqi, 1000, 0);
+      const usAqi = rawUsAqi !== null ? rawUsAqi : computeUsAqiFromPm25(pm25);
 
       const entry: LiveCityAqiEntry = {
         cityId: city.id,
@@ -646,4 +769,3 @@ export async function fetchBatchCitiesLiveAqi(
 
   return result;
 }
-

@@ -1,5 +1,16 @@
 import { ALL_MONITORED_CITIES, findCityMeta, type CityPhotoKey } from './aqiCities';
 import type { IndianLocation } from '../types/vayu';
+import americasSkylineImg from '../assets/images/city_americas_skyline_1795627317657.jpg';
+import bengaluruSouthImg from '../assets/images/city_bengaluru_south_1795625023197.jpg';
+import chennaiCoastalImg from '../assets/images/city_chennai_coastal_1795625022236.jpg';
+import delhiNcrImg from '../assets/images/city_delhi_ncr_1795625019165.jpg';
+import eastAsiaTokyoImg from '../assets/images/city_east_asia_tokyo_1795627317169.jpg';
+import europeSkylineImg from '../assets/images/city_europe_skyline_1795627317078.jpg';
+import jaipurHeartlandImg from '../assets/images/city_jaipur_heartland_1795625021831.jpg';
+import kolkataEastImg from '../assets/images/city_kolkata_east_1795625021151.jpg';
+import menaWaterfrontImg from '../assets/images/city_mena_waterfront_1795627318105.jpg';
+import mumbaiWestImg from '../assets/images/city_mumbai_west_1795625020716.jpg';
+import oceaniaHarborImg from '../assets/images/city_oceania_harbor_1795627318207.jpg';
 
 export const CITY_PHOTO_ASSETS: Record<
   CityPhotoKey,
@@ -11,67 +22,67 @@ export const CITY_PHOTO_ASSETS: Record<
   }
 > = {
   delhi: {
-    imageUrl: '/src/assets/images/city_delhi_ncr_1795625019165.jpg',
+    imageUrl: delhiNcrImg,
     fallbackGradient: 'from-amber-950 via-stone-900 to-slate-950',
     altEn: 'Kartavya Path and India Gate in New Delhi during winter morning light',
     altHi: 'सर्दियों की सुबह नई दिल्ली में कर्तव्य पथ और इंडिया गेट',
   },
   mumbai: {
-    imageUrl: '/src/assets/images/city_mumbai_west_1795625020716.jpg',
+    imageUrl: mumbaiWestImg,
     fallbackGradient: 'from-sky-950 via-slate-900 to-amber-950',
     altEn: 'Mumbai Marine Drive crescent bay and coastal skyline at golden hour',
     altHi: 'मुंबई मरीन ड्राइव और अरब सागर तटरेखा',
   },
   kolkata: {
-    imageUrl: '/src/assets/images/city_kolkata_east_1795625021151.jpg',
+    imageUrl: kolkataEastImg,
     fallbackGradient: 'from-slate-900 via-amber-950 to-slate-950',
     altEn: 'Howrah Bridge spanning the Hooghly River in Kolkata at early dawn',
     altHi: 'कोलकाता में हुगली नदी पर हावड़ा ब्रिज का दृश्य',
   },
   bengaluru: {
-    imageUrl: '/src/assets/images/city_bengaluru_south_1795625023197.jpg',
+    imageUrl: bengaluruSouthImg,
     fallbackGradient: 'from-emerald-950 via-teal-950 to-slate-950',
     altEn: 'Vidhana Soudha framed by lush green canopies of Cubbon Park in Bengaluru',
     altHi: 'बेंगलुरु में कब्बन पार्क के पेड़ों के बीच विधान सौधा',
   },
   jaipur: {
-    imageUrl: '/src/assets/images/city_jaipur_heartland_1795625021831.jpg',
+    imageUrl: jaipurHeartlandImg,
     fallbackGradient: 'from-rose-950 via-stone-900 to-slate-950',
     altEn: 'Pink sandstone heritage facades and carved balconies in Jaipur',
     altHi: 'जयपुर की ऐतिहासिक गुलाबी बलुआ पत्थर की इमारतें',
   },
   chennai: {
-    imageUrl: '/src/assets/images/city_chennai_coastal_1795625022236.jpg',
+    imageUrl: chennaiCoastalImg,
     fallbackGradient: 'from-cyan-950 via-slate-900 to-amber-950',
     altEn: 'Chennai Marina Beach coastline and heritage architecture along the Bay of Bengal',
     altHi: 'चेन्नई मरीना बीच और बंगाल की खाड़ी का तटीय दृश्य',
   },
   europe: {
-    imageUrl: '/src/assets/images/city_europe_skyline_1795627317078.jpg',
+    imageUrl: europeSkylineImg,
     fallbackGradient: 'from-slate-900 via-sky-950 to-stone-950',
     altEn: 'European limestone riverfront bridges and historic boulevards at morning light',
     altHi: 'यूरोपीय नदी तट और ऐतिहासिक स्थापत्य कला',
   },
   east_asia: {
-    imageUrl: '/src/assets/images/city_east_asia_tokyo_1795627317169.jpg',
+    imageUrl: eastAsiaTokyoImg,
     fallbackGradient: 'from-indigo-950 via-slate-900 to-amber-950',
     altEn: 'East Asian modern bayfront skyline and tree-lined promenade at sunrise',
     altHi: 'पूर्वी एशियाई आधुनिक तटीय शहर और सूर्योदय',
   },
   americas: {
-    imageUrl: '/src/assets/images/city_americas_skyline_1795627317657.jpg',
+    imageUrl: americasSkylineImg,
     fallbackGradient: 'from-slate-900 via-emerald-950 to-sky-950',
     altEn: 'North American skyline reflected across a serene urban park lake',
     altHi: 'अमेरिकी शहर का क्षितिज और हरित पार्क झील',
   },
   mena: {
-    imageUrl: '/src/assets/images/city_mena_waterfront_1795627318105.jpg',
+    imageUrl: menaWaterfrontImg,
     fallbackGradient: 'from-amber-950 via-cyan-950 to-slate-950',
     altEn: 'Middle Eastern sunlit waterfront promenade and sandstone-and-glass skyline',
     altHi: 'मध्य पूर्व तटीय सैरगाह और शहरी क्षितिज',
   },
   oceania: {
-    imageUrl: '/src/assets/images/city_oceania_harbor_1795627318207.jpg',
+    imageUrl: oceaniaHarborImg,
     fallbackGradient: 'from-sky-950 via-teal-950 to-slate-950',
     altEn: 'Southern Hemisphere coastal harbor with geometric sails, arch bridge, and blue bay',
     altHi: 'दक्षिणी गोलार्ध का तटीय बंदरगाह और नीली खाड़ी',

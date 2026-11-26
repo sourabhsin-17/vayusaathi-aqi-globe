@@ -1,6 +1,23 @@
-import { describe, expect, it } from 'vitest';
-import { estimateCpcbFromPm, getDominantPollutantName, getPm10CpcbCategory, getPm25CpcbCategory } from '../cpcb';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  clearAirQualityCache,
+  fetchLiveAirAndWeather,
+  getLastKnownSnapshot,
+  LIVE_UNAVAILABLE_MESSAGE,
+} from '../airQualityService';
+import {
+  computeUsAqiFromPm25,
+  estimateCpcbFromPm,
+  getDominantPollutantName,
+  getPm10CpcbCategory,
+  getPm25CpcbCategory,
+} from '../cpcb';
 import { generateFallbackAdvisory, generateFallbackAssistantReply } from '../fallbackEngine';
+import {
+  computeUtcSunSubsolarCoords,
+  latLngToVector3Coords,
+  vector3ToLatLngCoords,
+} from '../globeMath';
 import {
   calculateActivityShiftImpact,
   calculateCommuteShiftImpact,
@@ -223,7 +240,7 @@ describe('Input Sanitization & Zod Validators', () => {
     for (const city of ALL_MONITORED_CITIES) {
       expect(indianLocationSchema.safeParse(city).success).toBe(true);
       const asset = getLocationVisualAsset(city);
-      expect(asset.imageUrl).toMatch(/^\/src\/assets\/images\/.+\.jpg$/);
+      expect(asset.imageUrl).toMatch(/\.jpg(?:\?.*)?$|^data:image\/jpeg/i);
     }
   });
 
@@ -365,4 +382,264 @@ describe('Multi-Source AQI Cross-Verification', () => {
     expect(modelOnly.groundCheck.medianPm25).toBeNull();
   });
 });
+
+describe('Invalid AQI & Missing Pollutant Accuracy Guards', () => {
+  it('handles null PM10 and missing secondary pollutants cleanly without coercing to zero', () => {
+    const cpcb = estimateCpcbFromPm(42, null);
+    expect(cpcb.dominantPmPollutant).toBe('PM2.5');
+    expect(cpcb.pm10SubIndex).toBeNull();
+    expect(cpcb.categoryKey).toBe('satisfactory');
+
+    const dominant = getDominantPollutantName({
+      pm25: 12,
+      pm10: null,
+      usAqi: 52,
+      no2: null,
+      o3: 85,
+      so2: null,
+      co: null,
+    });
+    expect(dominant).toBe('O₃');
+  });
+
+  it('rejects negative and physically impossible Open-Meteo payloads', () => {
+    const negativePm = openMeteoAirQualitySchema.safeParse({
+      latitude: 28.6,
+      longitude: 77.2,
+      timezone: 'Asia/Kolkata',
+      current: {
+        time: '2026-11-26T08:00',
+        us_aqi: -12,
+        pm2_5: -4,
+      },
+      hourly: {
+        time: ['2026-11-26T08:00'],
+        pm2_5: [-4],
+        us_aqi: [-12],
+      },
+    });
+    expect(negativePm.success).toBe(false);
+
+    const impossibleAqi = openMeteoAirQualitySchema.safeParse({
+      latitude: 28.6,
+      longitude: 77.2,
+      timezone: 'Asia/Kolkata',
+      current: {
+        time: '2026-11-26T08:00',
+        us_aqi: 99999,
+        pm2_5: 50000,
+      },
+      hourly: {
+        time: ['2026-11-26T08:00'],
+        pm2_5: [50000],
+        us_aqi: [99999],
+      },
+    });
+    expect(impossibleAqi.success).toBe(false);
+  });
+
+  it('caps and evaluates US EPA AQI breakpoints across clean and extreme ranges', () => {
+    expect(computeUsAqiFromPm25(0)).toBe(0);
+    expect(computeUsAqiFromPm25(-5)).toBe(0);
+    expect(computeUsAqiFromPm25(325.4)).toBe(500);
+    expect(computeUsAqiFromPm25(500)).toBeGreaterThan(500);
+  });
+});
+
+describe('API Response Parsing, Failure Handling & Cache Isolation', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    clearAirQualityCache();
+  });
+
+  const delhiLoc = {
+    id: 'in-delhi',
+    name: 'Delhi',
+    state: 'Delhi NCR',
+    latitude: 28.6139,
+    longitude: 77.209,
+  };
+
+  const tokyoLoc = {
+    id: 'gl-tokyo',
+    name: 'Tokyo',
+    state: 'Japan',
+    latitude: 35.6762,
+    longitude: 139.6503,
+  };
+
+  it('throws clear error on HTTP 429 rate limits and malformed JSON', async () => {
+    clearAirQualityCache();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('Too Many Requests', { status: 429 }))
+    );
+    await expect(
+      fetchLiveAirAndWeather(delhiLoc, { forceRefresh: true })
+    ).rejects.toThrow(/rate limit/i);
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('<html>bad gateway</html>', { status: 200 }))
+    );
+    await expect(
+      fetchLiveAirAndWeather(delhiLoc, { forceRefresh: true })
+    ).rejects.toThrow(/malformed JSON/i);
+  });
+
+  it('rejects null PM2.5 payloads rather than fabricating zero AQI', async () => {
+    clearAirQualityCache();
+    const hours24 = Array.from({ length: 24 }, (_, i) => `2026-11-26T${String(i).padStart(2, '0')}:00`);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL) => {
+        const url = String(input);
+        if (url.includes('air-quality-api')) {
+          return new Response(
+            JSON.stringify({
+              latitude: 28.61,
+              longitude: 77.21,
+              timezone: 'Asia/Kolkata',
+              current: { time: '2026-11-26T08:00', us_aqi: null, pm2_5: null },
+              hourly: {
+                time: hours24,
+                pm2_5: Array(24).fill(null),
+                us_aqi: Array(24).fill(null),
+              },
+            }),
+            { status: 200 }
+          );
+        }
+        if (url.includes('api.open-meteo.com')) {
+          return new Response(
+            JSON.stringify({
+              latitude: 28.61,
+              longitude: 77.21,
+              timezone: 'Asia/Kolkata',
+              current: { time: '2026-11-26T08:00', temperature_2m: 20, relative_humidity_2m: 55, wind_speed_10m: 8 },
+              hourly: {
+                time: hours24,
+                temperature_2m: Array(24).fill(20),
+                relative_humidity_2m: Array(24).fill(55),
+                wind_speed_10m: Array(24).fill(8),
+              },
+            }),
+            { status: 200 }
+          );
+        }
+        return new Response('[]', { status: 200 });
+      })
+    );
+
+    await expect(
+      fetchLiveAirAndWeather(delhiLoc, { forceRefresh: true })
+    ).rejects.toThrow(LIVE_UNAVAILABLE_MESSAGE);
+  });
+
+  it('derives US AQI from PM2.5 when us_aqi is missing, keeps null gases intact, and isolates stale cache per city', async () => {
+    clearAirQualityCache();
+    const hours24 = Array.from({ length: 24 }, (_, i) => `2026-11-26T${String(i).padStart(2, '0')}:00`);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL) => {
+        const url = String(input);
+        if (url.includes('air-quality-api')) {
+          return new Response(
+            JSON.stringify({
+              latitude: 28.61,
+              longitude: 77.21,
+              timezone: 'Asia/Kolkata',
+              current: {
+                time: '2026-11-26T08:00',
+                us_aqi: null,
+                pm2_5: 35.4,
+                pm10: null,
+                nitrogen_dioxide: null,
+                ozone: 42,
+                sulphur_dioxide: null,
+                carbon_monoxide: null,
+              },
+              hourly: {
+                time: hours24,
+                pm2_5: hours24.map((_, i) => (i === 0 ? 35.4 : 22.0)),
+                pm10: hours24.map((_, i) => (i === 0 ? null : 40)),
+                us_aqi: hours24.map((_, i) => (i === 0 ? null : 75)),
+                nitrogen_dioxide: hours24.map((_, i) => (i === 0 ? null : 20)),
+                ozone: hours24.map((_, i) => (i === 0 ? 42 : 44)),
+                sulphur_dioxide: hours24.map((_, i) => (i === 0 ? null : 5)),
+                carbon_monoxide: hours24.map((_, i) => (i === 0 ? null : 250)),
+              },
+            }),
+            { status: 200 }
+          );
+        }
+        if (url.includes('api.open-meteo.com')) {
+          return new Response(
+            JSON.stringify({
+              latitude: 28.61,
+              longitude: 77.21,
+              timezone: 'Asia/Kolkata',
+              current: { time: '2026-11-26T08:00', temperature_2m: 22, relative_humidity_2m: 48, wind_speed_10m: 9 },
+              hourly: {
+                time: hours24,
+                temperature_2m: hours24.map((_, i) => (i === 0 ? 22 : 24)),
+                relative_humidity_2m: hours24.map((_, i) => (i === 0 ? 48 : 45)),
+                wind_speed_10m: hours24.map((_, i) => (i === 0 ? 9 : 10)),
+              },
+            }),
+            { status: 200 }
+          );
+        }
+        return new Response('[]', { status: 200 });
+      })
+    );
+
+    const snap = await fetchLiveAirAndWeather(delhiLoc, { forceRefresh: true });
+    expect(snap.usAqiDerivedFromPm25).toBe(true);
+    expect(snap.current.usAqi).toBe(100); // US EPA 2024 exact breakpoint at 35.4 ug/m3
+    expect(snap.current.pm10).toBeNull();
+    expect(snap.current.no2).toBeNull();
+    expect(snap.current.o3).toBe(42);
+    expect(snap.isStale).toBe(false);
+
+    // Matching city can retrieve labeled older reading; another city never inherits Delhi data
+    const cachedDelhi = getLastKnownSnapshot(delhiLoc);
+    expect(cachedDelhi).not.toBeNull();
+    expect(cachedDelhi?.isStale).toBe(true);
+    expect(cachedDelhi?.current.pm25).toBe(35.4);
+
+    const cachedTokyo = getLastKnownSnapshot(tokyoLoc);
+    expect(cachedTokyo).toBeNull();
+  });
+});
+
+describe('3D Globe Spherical Coordinate Projections', () => {
+  it('roundtrips lat/lng <-> 3D Cartesian coordinates across hemispheres', () => {
+    const points = [
+      { lat: 28.6139, lng: 77.209 }, // New Delhi
+      { lat: -33.8688, lng: 151.2093 }, // Sydney
+      { lat: 40.7128, lng: -74.006 }, // New York
+      { lat: 0, lng: 0 }, // Equator / Prime Meridian
+    ];
+
+    for (const pt of points) {
+      const vec = latLngToVector3Coords(pt.lat, pt.lng, 1);
+      const radius = Math.hypot(vec.x, vec.y, vec.z);
+      expect(radius).toBeCloseTo(1, 5);
+
+      const roundtrip = vector3ToLatLngCoords(vec);
+      expect(roundtrip.lat).toBeCloseTo(pt.lat, 3);
+      expect(roundtrip.lng).toBeCloseTo(pt.lng, 3);
+    }
+  });
+
+  it('computes valid solar subsolar coordinates within Earth axial tilt bounds', () => {
+    const noonUtc = new Date('2026-06-21T12:00:00Z');
+    const subsolar = computeUtcSunSubsolarCoords(noonUtc);
+    expect(subsolar.lat).toBeGreaterThan(22);
+    expect(subsolar.lat).toBeLessThanOrEqual(23.45);
+    expect(subsolar.lng).toBeCloseTo(0, 1);
+  });
+});
+
 

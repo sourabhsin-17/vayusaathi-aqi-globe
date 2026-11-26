@@ -478,7 +478,7 @@ export function BriefingSlideDeck({
                   <div
                     role="group"
                     aria-label="Hourly forecast bar selector"
-                    className="relative z-10 grid grid-cols-12 sm:grid-cols-24 gap-1 items-end h-28 pt-5"
+                    className="relative z-10 grid grid-cols-12 sm:grid-cols-[repeat(24,minmax(0,1fr))] gap-1 items-end h-28 pt-5"
                   >
                     {hourlyList.map((pt, idx) => {
                       const heightPct = Math.max(16, Math.round((pt.pm25 / maxHourlyPm) * 100));
@@ -604,9 +604,9 @@ export function BriefingSlideDeck({
                           </strong>
                         </div>
                         <div>
-                          <span className="block text-[11px] text-[#A7A3C7]">NO₂</span>
+                          <span className="block text-[11px] text-[#A7A3C7]">NO₂ (µg/m³)</span>
                           <strong className="text-2xl font-bold text-white">
-                            {scrubbedHour.no2}
+                            {scrubbedHour.no2 !== null ? scrubbedHour.no2 : '—'}
                           </strong>
                         </div>
                       </div>

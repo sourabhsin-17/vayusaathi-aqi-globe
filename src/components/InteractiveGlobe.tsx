@@ -17,6 +17,11 @@ import {
 import { ALL_MONITORED_CITIES } from '../lib/aqiCities';
 import { CPCB_CATEGORY_STYLES } from '../lib/cpcb';
 import { createRealisticEarthTextures } from '../lib/earthTextures';
+import {
+  computeUtcSunSubsolarCoords,
+  latLngToVector3Coords,
+  vector3ToLatLngCoords,
+} from '../lib/globeMath';
 import type { AirQualitySnapshot, IndianLocation, Language } from '../types/vayu';
 
 interface InteractiveGlobeProps {
@@ -39,40 +44,51 @@ const GLOBE_REGION_TARGETS = [
   { id: 'oceania', labelEn: 'Oceania', labelHi: 'ओशिनिया', lat: -28.0, lng: 145.0, dist: 2.8 },
 ];
 
+const FALLBACK_HUB_IDS = new Set([
+  'in-delhi',
+  'in-mumbai',
+  'in-bengaluru',
+  'in-chennai',
+  'in-kolkata',
+  'in-hyderabad',
+  'in-jaipur',
+  'in-lucknow',
+  'in-srinagar',
+  'in-guwahati',
+  'gl-london',
+  'gl-paris',
+  'gl-zurich',
+  'gl-new-york',
+  'gl-san-francisco',
+  'gl-mexico-city',
+  'gl-sao-paulo',
+  'gl-cairo',
+  'gl-dubai',
+  'gl-nairobi',
+  'gl-tokyo',
+  'gl-beijing',
+  'gl-singapore',
+  'gl-sydney',
+]);
+
 function latLngToVector3(
   lat: number,
   lng: number,
   radius: number,
   out: THREE.Vector3
 ): THREE.Vector3 {
-  const phi = THREE.MathUtils.degToRad(90 - lat);
-  const theta = THREE.MathUtils.degToRad(lng + 180);
-  const x = -radius * Math.sin(phi) * Math.cos(theta);
-  const z = radius * Math.sin(phi) * Math.sin(theta);
-  const y = radius * Math.cos(phi);
+  const { x, y, z } = latLngToVector3Coords(lat, lng, radius);
   return out.set(x, y, z);
 }
 
 function vector3ToLatLng(point: THREE.Vector3): { lat: number; lng: number } {
-  const n = point.clone().normalize();
-  const lat = 90 - THREE.MathUtils.radToDeg(Math.acos(THREE.MathUtils.clamp(n.y, -1, 1)));
-  const theta = Math.atan2(n.z, -n.x);
-  let lng = THREE.MathUtils.radToDeg(theta) - 180;
-  if (lng < -180) lng += 360;
-  if (lng > 180) lng -= 360;
-  return { lat: Number(lat.toFixed(4)), lng: Number(lng.toFixed(4)) };
+  return vector3ToLatLngCoords(point);
 }
 
 // Compute real astronomical subsolar vector from UTC date/clock
 function computeUtcSunDirection(now = new Date(), out = new THREE.Vector3()): THREE.Vector3 {
-  const startOfYear = Date.UTC(now.getUTCFullYear(), 0, 0);
-  const dayOfYear = Math.floor((now.getTime() - startOfYear) / 86400000);
-  const declinationDeg =
-    -23.44 * Math.cos(((2 * Math.PI) / 365) * (dayOfYear + 10));
-  const utcHours =
-    now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
-  const subsolarLng = (12 - utcHours) * 15;
-  return latLngToVector3(declinationDeg, subsolarLng, 1, out).normalize();
+  const { lat, lng } = computeUtcSunSubsolarCoords(now);
+  return latLngToVector3(lat, lng, 1, out).normalize();
 }
 
 function buildCartographicGraticule(radius: number): THREE.BufferGeometry {
@@ -129,12 +145,17 @@ export function InteractiveGlobe({
   lang,
 }: InteractiveGlobeProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
-  const [autoSpin, setAutoSpin] = useState(true);
+  const [prefersReducedMotion] = useState(() =>
+    typeof window !== 'undefined' &&
+    Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
+  );
+  const [autoSpin, setAutoSpin] = useState(() => !prefersReducedMotion);
   const [showClouds, setShowClouds] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
   const [atlasLighting, setAtlasLighting] = useState(false);
   const [hudCollapsed, setHudCollapsed] = useState(false);
   const [hoverCityName, setHoverCityName] = useState<string | null>(null);
+  const [webglUnavailable, setWebglUnavailable] = useState(false);
 
   const selectedRef = useRef(selectedLocation);
   const prevCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -181,18 +202,49 @@ export function InteractiveGlobe({
     const container = mountRef.current;
     if (!container) return;
 
-    const isSoftwareGl = (() => {
-      const probe = document.createElement('canvas').getContext('webgl2');
-      if (!probe) return true;
-      const ext = probe.getExtension('WEBGL_debug_renderer_info');
-      const param = ext ? ext.UNMASKED_RENDERER_WEBGL : probe.RENDERER;
-      const gpu = String(probe.getParameter(param));
-      probe.getExtension('WEBGL_lose_context')?.loseContext();
-      return /SwiftShader|llvmpipe|softpipe|Software|Basic Render/i.test(gpu);
-    })();
+    let renderer: THREE.WebGLRenderer;
+    let isSoftwareGl = false;
 
-    const width = container.clientWidth || 720;
-    const height = container.clientHeight || 460;
+    try {
+      const probe = document.createElement('canvas').getContext('webgl2');
+      const fallbackGl = probe ?? document.createElement('canvas').getContext('webgl');
+      if (!fallbackGl) {
+        setWebglUnavailable(true);
+        return;
+      }
+      if (probe) {
+        const ext = probe.getExtension('WEBGL_debug_renderer_info');
+        const param = ext ? ext.UNMASKED_RENDERER_WEBGL : probe.RENDERER;
+        const gpu = String(probe.getParameter(param));
+        probe.getExtension('WEBGL_lose_context')?.loseContext();
+        isSoftwareGl = /SwiftShader|llvmpipe|softpipe|Software|Basic Render/i.test(gpu);
+      } else {
+        isSoftwareGl = true;
+      }
+
+      const width = Math.max(280, container.clientWidth || 720);
+      const height = Math.max(280, container.clientHeight || 460);
+
+      renderer = new THREE.WebGLRenderer({
+        antialias: !isSoftwareGl,
+        powerPreference: 'high-performance',
+      });
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.1;
+      renderer.setPixelRatio(isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(width, height);
+      renderer.shadowMap.enabled = !isSoftwareGl;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.domElement.style.touchAction = 'none';
+      container.appendChild(renderer.domElement);
+    } catch {
+      setWebglUnavailable(true);
+      return;
+    }
+
+    const width = Math.max(280, container.clientWidth || 720);
+    const height = Math.max(280, container.clientHeight || 460);
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color('#02040d');
@@ -206,19 +258,6 @@ export function InteractiveGlobe({
       2.72,
       camera.position
     );
-
-    const renderer = new THREE.WebGLRenderer({
-      antialias: !isSoftwareGl,
-      powerPreference: 'high-performance',
-    });
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.1;
-    renderer.setPixelRatio(isSoftwareGl ? 1 : Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(width, height);
-    renderer.shadowMap.enabled = !isSoftwareGl;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    container.appendChild(renderer.domElement);
 
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     const envTex = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -853,10 +892,23 @@ export function InteractiveGlobe({
       }
     };
 
+    const handlePointerLeave = () => {
+      setHoverCityName(null);
+    };
+
+    const handleContextLost = (ev: Event) => {
+      ev.preventDefault();
+      disposed = true;
+      setWebglUnavailable(true);
+    };
+
     renderer.domElement.style.cursor = 'grab';
     renderer.domElement.addEventListener('pointerdown', handlePointerDown);
     renderer.domElement.addEventListener('pointermove', handlePointerMove);
     renderer.domElement.addEventListener('pointerup', handlePointerUp);
+    renderer.domElement.addEventListener('pointerleave', handlePointerLeave);
+    renderer.domElement.addEventListener('pointercancel', handlePointerLeave);
+    renderer.domElement.addEventListener('webglcontextlost', handleContextLost);
 
     let frameId = 0;
     let disposed = false;
@@ -900,7 +952,7 @@ export function InteractiveGlobe({
         renderDirty = false;
         const delta = Math.min(0.1, clock.getDelta());
 
-        if (!isSoftwareGl) {
+        if (!isSoftwareGl && !prefersReducedMotion) {
           cloudMesh.rotation.y += delta * 0.011;
           cloudShadowMesh.rotation.y = cloudMesh.rotation.y - 0.012;
           activeBeacon.rotation.y += delta * 0.9;
@@ -919,7 +971,7 @@ export function InteractiveGlobe({
           ) {
             transitionActive = false;
           }
-        } else if (autoSpinRef.current && !isSoftwareGl) {
+        } else if (autoSpinRef.current && !isSoftwareGl && !prefersReducedMotion) {
           camera.position.applyAxisAngle(_upVec, delta * 0.085);
         }
 
@@ -930,7 +982,9 @@ export function InteractiveGlobe({
           renderBusy = false;
           if (
             !disposed &&
-            (renderDirty || transitionActive || (autoSpinRef.current && !isSoftwareGl))
+            (renderDirty ||
+              transitionActive ||
+              (autoSpinRef.current && !isSoftwareGl && !prefersReducedMotion))
           ) {
             requestRender();
           }
@@ -947,11 +1001,15 @@ export function InteractiveGlobe({
       if (!container || disposed) return;
       const w = container.clientWidth || 720;
       const h = container.clientHeight || 460;
+      if (w <= 0 || h <= 0) return;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
       requestRender();
     };
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => handleResize()) : null;
+    resizeObserver?.observe(container);
     window.addEventListener('resize', handleResize);
 
     if (!isSoftwareGl) {
@@ -963,10 +1021,14 @@ export function InteractiveGlobe({
       disposed = true;
       cancelAnimationFrame(frameId);
       clearTimeout(frameId);
+      resizeObserver?.disconnect();
       window.removeEventListener('resize', handleResize);
       renderer.domElement.removeEventListener('pointerdown', handlePointerDown);
       renderer.domElement.removeEventListener('pointermove', handlePointerMove);
       renderer.domElement.removeEventListener('pointerup', handlePointerUp);
+      renderer.domElement.removeEventListener('pointerleave', handlePointerLeave);
+      renderer.domElement.removeEventListener('pointercancel', handlePointerLeave);
+      renderer.domElement.removeEventListener('webglcontextlost', handleContextLost);
       controls.dispose();
       colorMap.dispose();
       normalMap.dispose();
@@ -1013,10 +1075,144 @@ export function InteractiveGlobe({
         container.removeChild(renderer.domElement);
       }
     };
-  }, []);
+  }, [prefersReducedMotion]);
 
   const ns = selectedLocation.latitude >= 0 ? 'N' : 'S';
   const ew = selectedLocation.longitude >= 0 ? 'E' : 'W';
+
+  if (webglUnavailable) {
+    const fallbackHubs = ALL_MONITORED_CITIES.filter((c) => FALLBACK_HUB_IDS.has(c.id));
+    const selX = ((selectedLocation.longitude + 180) / 360) * 360;
+    const selY = ((90 - selectedLocation.latitude) / 180) * 180;
+
+    return (
+      <div className="space-y-2.5">
+        <div
+          role="region"
+          aria-label={lang === 'hi' ? '2D ग्लोब मानचित्र फ़ॉलबैक' : 'Interactive 2D World Airshed Fallback'}
+          className="relative h-[360px] sm:h-[460px] w-full overflow-hidden rounded-2xl border border-white/15 bg-[#02040d] p-4 flex flex-col justify-between"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div>
+              <p className="font-semibold text-[#67E8F9]">
+                {lang === 'hi'
+                  ? 'WebGL 3D उपलब्ध नहीं — इंटरैक्टिव 2D ग्लोब सक्रिय'
+                  : 'WebGL 3D unavailable — interactive 2D globe view active'}
+              </p>
+              <p className="font-mono-tabular text-[11px] text-[#A7A3C7]">
+                {selectedLocation.name} · {Math.abs(selectedLocation.latitude).toFixed(2)}°{ns},{' '}
+                {Math.abs(selectedLocation.longitude).toFixed(2)}°{ew}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onDetectGps}
+              disabled={isLocating}
+              className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg bg-[#67E8F9] px-3 py-1 text-xs font-semibold text-[#0B0A16] hover:bg-[#A5F3FC] disabled:opacity-60"
+            >
+              <LocateFixed className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>{isLocating ? '...' : lang === 'hi' ? 'मेरा स्थान' : 'My Location'}</span>
+            </button>
+          </div>
+
+          <svg
+            viewBox="0 0 360 180"
+            role="img"
+            aria-label="Equirectangular global airshed selector map"
+            onClick={(ev) => {
+              const rect = ev.currentTarget.getBoundingClientRect();
+              const normX = (ev.clientX - rect.left) / rect.width;
+              const normY = (ev.clientY - rect.top) / rect.height;
+              const lat = Number(Math.max(-85, Math.min(85, 90 - normY * 180)).toFixed(2));
+              const lng = Number(Math.max(-180, Math.min(180, normX * 360 - 180)).toFixed(2));
+              const pinNs = lat >= 0 ? 'N' : 'S';
+              const pinEw = lng >= 0 ? 'E' : 'W';
+              onSelectLocation({
+                id: `globe-${lat}-${lng}`,
+                name: `Globe Pin (${Math.abs(lat)}°${pinNs}, ${Math.abs(lng)}°${pinEw})`,
+                state: `${Math.abs(lat)}°${pinNs}, ${Math.abs(lng)}°${pinEw}`,
+                latitude: lat,
+                longitude: lng,
+              });
+            }}
+            className="my-2 h-full max-h-[270px] w-full cursor-crosshair rounded-xl border border-white/10 bg-[#070B1A]"
+          >
+            {[-60, -30, 0, 30, 60].map((lat) => {
+              const y = 90 - lat;
+              return (
+                <line
+                  key={`lat-${lat}`}
+                  x1={0}
+                  x2={360}
+                  y1={y}
+                  y2={y}
+                  stroke="#67E8F9"
+                  strokeOpacity={lat === 0 ? 0.25 : 0.1}
+                  strokeWidth={0.5}
+                />
+              );
+            })}
+            {[-120, -60, 0, 60, 120].map((lng) => {
+              const x = lng + 180;
+              return (
+                <line
+                  key={`lng-${lng}`}
+                  x1={x}
+                  x2={x}
+                  y1={0}
+                  y2={180}
+                  stroke="#67E8F9"
+                  strokeOpacity={lng === 0 ? 0.25 : 0.1}
+                  strokeWidth={0.5}
+                />
+              );
+            })}
+
+            {fallbackHubs.map((city) => {
+              const cx = city.longitude + 180;
+              const cy = 90 - city.latitude;
+              const isSelected = city.id === selectedLocation.id;
+              return (
+                <g
+                  key={city.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectLocation(city);
+                  }}
+                  className="cursor-pointer"
+                >
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r={isSelected ? 4 : 2.3}
+                    fill={city.countryGroup === 'India' ? '#fbbf24' : '#38bdf8'}
+                    fillOpacity={isSelected ? 1 : 0.85}
+                  />
+                  <title>{`${city.name}, ${city.state}`}</title>
+                </g>
+              );
+            })}
+
+            <circle
+              cx={selX}
+              cy={selY}
+              r={6}
+              fill="none"
+              stroke="#5DCAA5"
+              strokeWidth={1.3}
+            />
+            <circle cx={selX} cy={selY} r={2.2} fill="#5DCAA5" />
+          </svg>
+
+          <p className="text-[11px] text-[#A7A3C7]">
+            {lang === 'hi'
+              ? 'ग्लोब मैप पर किसी भी शहर के बिंदु या निर्देशांक पर क्लिक करें।'
+              : 'Click any hub dot or anywhere on the coordinate grid to inspect live AQI.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2.5">
@@ -1033,18 +1229,23 @@ export function InteractiveGlobe({
               setAutoSpin(false);
               flyToCoordsTriggerRef.current?.(tgt.lat, tgt.lng, tgt.dist);
             }}
-            className="min-h-[28px] rounded-md border border-white/12 bg-[#0B0A16] px-2.5 py-0.5 text-[11px] font-medium text-[#E6EDF7] hover:border-[#67E8F9] hover:bg-[#14163F] whitespace-nowrap shrink-0 transition-colors"
+            className="min-h-[34px] sm:min-h-[30px] rounded-md border border-white/12 bg-[#0B0A16] px-2.5 py-0.5 text-[11px] font-medium text-[#E6EDF7] hover:border-[#67E8F9] hover:bg-[#14163F] whitespace-nowrap shrink-0 transition-colors"
           >
             {lang === 'hi' ? tgt.labelHi : tgt.labelEn}
           </button>
         ))}
       </div>
 
-      <div className="relative h-[460px] w-full overflow-hidden rounded-2xl border border-white/15 bg-[#02040d]">
-        <div ref={mountRef} className="h-full w-full" aria-label="Interactive 3D Earth Globe" />
+      <div className="relative h-[360px] sm:h-[460px] w-full overflow-hidden rounded-2xl border border-white/15 bg-[#02040d]">
+        <div
+          ref={mountRef}
+          className="h-full w-full"
+          role="region"
+          aria-label="Interactive 3D Earth Globe"
+        />
 
         {/* Crisp Top-Left Spatial Telemetry Readout (Zero Backdrop-Blur) */}
-        <div className="pointer-events-none absolute left-4 top-4 rounded-xl border border-[#67E8F9]/35 bg-[#0B0A16]/95 px-3.5 py-2 text-xs text-[#E6EDF7]">
+        <div className="pointer-events-none absolute left-3 top-3 sm:left-4 sm:top-4 rounded-xl border border-[#67E8F9]/35 bg-[#0B0A16]/95 px-3 py-2 text-xs text-[#E6EDF7]">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-[#67E8F9]">{selectedLocation.name}</span>
             {snapshot ? (
@@ -1067,7 +1268,8 @@ export function InteractiveGlobe({
           <button
             type="button"
             onClick={() => setHudCollapsed((prev) => !prev)}
-            className="mb-1.5 inline-flex min-h-[28px] items-center gap-1 rounded-md border border-white/15 bg-[#0B0A16]/95 px-2.5 py-1 text-[11px] font-medium text-[#E6EDF7] hover:bg-[#14163F] whitespace-nowrap"
+            aria-expanded={!hudCollapsed}
+            className="mb-1.5 inline-flex min-h-[34px] sm:min-h-[30px] items-center gap-1 rounded-md border border-white/15 bg-[#0B0A16]/95 px-2.5 py-1 text-[11px] font-medium text-[#E6EDF7] hover:bg-[#14163F] whitespace-nowrap"
           >
             {hudCollapsed ? (
               <>
@@ -1087,7 +1289,7 @@ export function InteractiveGlobe({
               <button
                 type="button"
                 onClick={() => setAutoSpin((prev) => !prev)}
-                className="inline-flex min-h-[32px] items-center gap-1.5 rounded-md border border-white/12 bg-[#06050E] px-2.5 py-1 font-medium hover:bg-[#14163F] whitespace-nowrap shrink-0"
+                className="inline-flex min-h-[36px] sm:min-h-[32px] items-center gap-1.5 rounded-md border border-white/12 bg-[#06050E] px-2.5 py-1 font-medium hover:bg-[#14163F] whitespace-nowrap shrink-0"
               >
                 {autoSpin ? (
                   <>
@@ -1106,7 +1308,7 @@ export function InteractiveGlobe({
                 type="button"
                 onClick={() => setShowClouds((prev) => !prev)}
                 aria-pressed={showClouds}
-                className={`inline-flex min-h-[32px] items-center gap-1.5 rounded-md border px-2.5 py-1 font-medium whitespace-nowrap shrink-0 ${
+                className={`inline-flex min-h-[36px] sm:min-h-[32px] items-center gap-1.5 rounded-md border px-2.5 py-1 font-medium whitespace-nowrap shrink-0 ${
                   showClouds
                     ? 'border-[#67E8F9]/50 bg-[#14163F] text-[#E6EDF7]'
                     : 'border-white/12 bg-[#06050E] text-[#A7A3C7] hover:bg-[#14163F]'
@@ -1120,7 +1322,7 @@ export function InteractiveGlobe({
                 type="button"
                 onClick={() => setShowGrid((prev) => !prev)}
                 aria-pressed={showGrid}
-                className={`inline-flex min-h-[32px] items-center gap-1.5 rounded-md border px-2.5 py-1 font-medium whitespace-nowrap shrink-0 ${
+                className={`inline-flex min-h-[36px] sm:min-h-[32px] items-center gap-1.5 rounded-md border px-2.5 py-1 font-medium whitespace-nowrap shrink-0 ${
                   showGrid
                     ? 'border-[#67E8F9]/50 bg-[#14163F] text-[#E6EDF7]'
                     : 'border-white/12 bg-[#06050E] text-[#A7A3C7] hover:bg-[#14163F]'
@@ -1134,7 +1336,7 @@ export function InteractiveGlobe({
                 type="button"
                 onClick={() => setAtlasLighting((prev) => !prev)}
                 aria-pressed={atlasLighting}
-                className={`inline-flex min-h-[32px] items-center gap-1.5 rounded-md border px-2.5 py-1 font-medium whitespace-nowrap shrink-0 ${
+                className={`inline-flex min-h-[36px] sm:min-h-[32px] items-center gap-1.5 rounded-md border px-2.5 py-1 font-medium whitespace-nowrap shrink-0 ${
                   atlasLighting
                     ? 'border-[#67E8F9]/50 bg-[#14163F] text-[#E6EDF7]'
                     : 'border-white/12 bg-[#06050E] text-[#A7A3C7] hover:bg-[#14163F]'
@@ -1155,7 +1357,7 @@ export function InteractiveGlobe({
               <button
                 type="button"
                 onClick={() => focusLocationTriggerRef.current?.()}
-                className="inline-flex min-h-[32px] items-center gap-1.5 rounded-md border border-white/12 bg-[#06050E] px-2.5 py-1 font-medium hover:bg-[#14163F] whitespace-nowrap shrink-0"
+                className="inline-flex min-h-[36px] sm:min-h-[32px] items-center gap-1.5 rounded-md border border-white/12 bg-[#06050E] px-2.5 py-1 font-medium hover:bg-[#14163F] whitespace-nowrap shrink-0"
               >
                 <Compass className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
                 <span>{lang === 'hi' ? 'पिन' : 'Pin'}</span>
@@ -1165,10 +1367,10 @@ export function InteractiveGlobe({
                 type="button"
                 onClick={onDetectGps}
                 disabled={isLocating}
-                className="inline-flex min-h-[32px] items-center gap-1.5 rounded-md bg-[#67E8F9] px-2.5 py-1 font-semibold text-[#0B0A16] hover:bg-[#A5F3FC] disabled:opacity-60 whitespace-nowrap shrink-0"
+                className="inline-flex min-h-[36px] sm:min-h-[32px] items-center gap-1.5 rounded-md bg-[#67E8F9] px-2.5 py-1 font-semibold text-[#0B0A16] hover:bg-[#A5F3FC] disabled:opacity-60 whitespace-nowrap shrink-0"
               >
                 <LocateFixed className="h-3.5 w-3.5 text-[#0B0A16]" aria-hidden="true" />
-                <span>{isLocating ? '...' : lang === 'hi' ? 'GPS' : 'GPS'}</span>
+                <span>{isLocating ? '...' : 'GPS'}</span>
               </button>
 
               <button
@@ -1177,7 +1379,7 @@ export function InteractiveGlobe({
                   setAutoSpin(true);
                   flyToCoordsTriggerRef.current?.(20.0, 45.0, 3.25);
                 }}
-                className="inline-flex min-h-[32px] items-center gap-1.5 rounded-md border border-white/12 bg-[#06050E] px-2.5 py-1 font-medium hover:bg-[#14163F] whitespace-nowrap shrink-0"
+                className="inline-flex min-h-[36px] sm:min-h-[32px] items-center gap-1.5 rounded-md border border-white/12 bg-[#06050E] px-2.5 py-1 font-medium hover:bg-[#14163F] whitespace-nowrap shrink-0"
               >
                 <RotateCcw className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
                 <span>{lang === 'hi' ? 'विश्व' : 'World'}</span>

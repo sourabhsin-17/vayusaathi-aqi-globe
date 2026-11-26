@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowUpDown, Globe, Radio, RefreshCw, Search } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowUpDown, Globe, Radio, RefreshCw, Search, X } from 'lucide-react';
 import {
   ALL_MONITORED_CITIES,
   ALL_WORLD_REGIONS,
@@ -44,10 +44,17 @@ export function CityAqiDirectory({
 
   const [globalLookupResults, setGlobalLookupResults] = useState<IndianLocation[]>([]);
   const [globalLookupLoading, setGlobalLookupLoading] = useState(false);
+  const [globalLookupSearched, setGlobalLookupSearched] = useState(false);
+  const batchAbortRef = useRef<AbortController | null>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowMs(Date.now()), 30000);
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearInterval(timer);
+      batchAbortRef.current?.abort();
+      searchAbortRef.current?.abort();
+    };
   }, []);
 
   const visibleRegions = useMemo(() => {
@@ -111,19 +118,31 @@ export function CityAqiDirectory({
   const loadRegionStations = useCallback(
     async (citiesToLoad: MonitoredCityMeta[], forceRefresh = false) => {
       if (citiesToLoad.length === 0) return;
+      batchAbortRef.current?.abort();
+      const controller = new AbortController();
+      batchAbortRef.current = controller;
+
       setLoading(true);
       setError(null);
       try {
-        const batch = await fetchBatchCitiesLiveAqi(citiesToLoad, { forceRefresh });
-        setReadingsById((prev) => ({ ...prev, ...batch }));
+        const batch = await fetchBatchCitiesLiveAqi(citiesToLoad, {
+          forceRefresh,
+          signal: controller.signal,
+        });
+        if (!controller.signal.aborted) {
+          setReadingsById((prev) => ({ ...prev, ...batch }));
+        }
       } catch (err) {
+        if (controller.signal.aborted) return;
         setError(
           err instanceof Error
             ? err.message
             : 'Unable to load live AQI station batch.'
         );
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     },
     []
@@ -150,15 +169,29 @@ export function CityAqiDirectory({
   const handleGlobalSearch = async () => {
     const trimmed = searchText.trim();
     if (trimmed.length < 2) return;
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+
     setGlobalLookupLoading(true);
+    setGlobalLookupSearched(false);
     setError(null);
     try {
-      const hits = await searchGlobalCities(trimmed, { scope: 'all' });
-      setGlobalLookupResults(hits);
+      const hits = await searchGlobalCities(trimmed, {
+        scope: 'all',
+        signal: controller.signal,
+      });
+      if (!controller.signal.aborted) {
+        setGlobalLookupResults(hits);
+        setGlobalLookupSearched(true);
+      }
     } catch (err) {
+      if (controller.signal.aborted) return;
       setError(err instanceof Error ? err.message : 'Global geocoding search failed.');
     } finally {
-      setGlobalLookupLoading(false);
+      if (!controller.signal.aborted) {
+        setGlobalLookupLoading(false);
+      }
     }
   };
 
@@ -284,6 +317,7 @@ export function CityAqiDirectory({
                 onChange={(e) => {
                   setSearchText(e.target.value);
                   setGlobalLookupResults([]);
+                  setGlobalLookupSearched(false);
                 }}
                 placeholder={
                   lang === 'hi'
@@ -291,8 +325,22 @@ export function CityAqiDirectory({
                     : 'Filter city, country, or region...'
                 }
                 aria-label="Filter monitored cities"
-                className="min-h-[38px] w-full rounded-xl border border-white/12 bg-[#0B0A16] pl-8 pr-3 text-xs text-[#E6EDF7] placeholder:text-[#A7A3C7]/70 focus:border-[#67E8F9] focus:bg-[#14122E] focus:outline-none"
+                className="min-h-[40px] w-full rounded-xl border border-white/12 bg-[#0B0A16] pl-8 pr-9 text-xs text-[#E6EDF7] placeholder:text-[#A7A3C7]/70 focus:border-[#67E8F9] focus:bg-[#14122E] focus:outline-none"
               />
+              {searchText ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchText('');
+                    setGlobalLookupResults([]);
+                    setGlobalLookupSearched(false);
+                  }}
+                  aria-label={lang === 'hi' ? 'फ़िल्टर साफ़ करें' : 'Clear city filter'}
+                  className="absolute right-1.5 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#A7A3C7] hover:bg-white/10 hover:text-white"
+                >
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              ) : null}
             </div>
 
             {searchText.trim().length >= 2 ? (
@@ -383,6 +431,13 @@ export function CityAqiDirectory({
       </div>
 
       {/* Live Worldwide Geocoding Lookup Results */}
+      {globalLookupSearched && globalLookupResults.length === 0 && !globalLookupLoading ? (
+        <p role="status" className="rounded-xl border border-white/10 bg-[#0B0A16] px-4 py-3 text-xs text-[#A7A3C7]">
+          {lang === 'hi'
+            ? `"${searchText.trim()}" के लिए Open-Meteo वैश्विक खोज में कोई परिणाम नहीं मिला।`
+            : `No locations found worldwide for "${searchText.trim()}".`}
+        </p>
+      ) : null}
       {globalLookupResults.length > 0 ? (
         <div className="rounded-2xl border border-[#5DCAA5]/35 bg-[#1D9E75]/12 p-4 space-y-2.5">
           <p className="text-xs font-semibold text-[#5DCAA5]">
@@ -399,7 +454,7 @@ export function CityAqiDirectory({
                   onSelectLocation(hit);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className="flex items-center justify-between gap-2 rounded-xl border border-white/12 bg-[#0B0A16] px-3.5 py-2.5 text-left text-xs hover:border-[#67E8F9]"
+                className="flex min-h-[44px] items-center justify-between gap-2 rounded-xl border border-white/12 bg-[#0B0A16] px-3.5 py-2.5 text-left text-xs hover:border-[#67E8F9]"
               >
                 <div className="min-w-0">
                   <p className="truncate font-bold text-[#E6EDF7]">{hit.name}</p>

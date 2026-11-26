@@ -258,7 +258,7 @@ export function LocationExplorer({
             <ErrorBoundary>
               <Suspense
                 fallback={
-                  <div className="flex h-[460px] items-center justify-center rounded-xl border border-white/15 bg-[#06050E] text-xs font-medium text-[#A7A3C7]">
+                  <div className="flex h-[360px] sm:h-[460px] items-center justify-center rounded-xl border border-white/15 bg-[#06050E] text-xs font-medium text-[#A7A3C7]">
                     {lang === 'hi' ? '3D ग्लोब लोड हो रहा है...' : 'Loading playable 3D Earth globe...'}
                   </div>
                 }
