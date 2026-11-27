@@ -116,11 +116,13 @@ export const sensorCommunityListSchema = z.array(
 
 export const indianLocationSchema = z.object({
   id: z.string().min(1).max(80),
-  name: z.string().min(1).max(120),
-  state: z.string().max(120),
+  name: z.string().min(1).max(160),
+  state: z.string().max(160),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   isCurrentLocation: z.boolean().optional(),
+  exactAreaLabel: z.string().max(220).optional(),
+  accuracyMeters: z.number().finite().min(0).max(100000).optional(),
 });
 
 export const householdProfileSchema = z.object({

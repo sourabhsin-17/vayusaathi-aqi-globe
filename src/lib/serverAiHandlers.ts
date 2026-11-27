@@ -539,3 +539,153 @@ SECURITY & GROUNDING RULES (NON-NEGOTIABLE):
     };
   }
 }
+
+interface ReverseGeocodeCacheItem {
+  expiresAt: number;
+  body: Record<string, unknown>;
+}
+
+const reverseGeocodeCache = new Map<string, ReverseGeocodeCacheItem>();
+
+export async function handleReverseGeocode(
+  latRaw: unknown,
+  lonRaw: unknown
+): Promise<HandlerResult> {
+  const lat = typeof latRaw === 'number' ? latRaw : Number(latRaw);
+  const lon = typeof lonRaw === 'number' ? lonRaw : Number(lonRaw);
+
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lon) ||
+    lat < -90 ||
+    lat > 90 ||
+    lon < -180 ||
+    lon > 180
+  ) {
+    return {
+      status: 400,
+      body: { ok: false, error: 'Invalid latitude or longitude.' },
+    };
+  }
+
+  const cacheKey = `${lat.toFixed(3)}_${lon.toFixed(3)}`;
+  const cached = reverseGeocodeCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return { status: 200, body: cached.body };
+  }
+
+  const url = new URL('https://nominatim.openstreetmap.org/reverse');
+  url.searchParams.set('format', 'jsonv2');
+  url.searchParams.set('lat', lat.toFixed(5));
+  url.searchParams.set('lon', lon.toFixed(5));
+  url.searchParams.set('zoom', '16');
+  url.searchParams.set('addressdetails', '1');
+  url.searchParams.set('accept-language', 'en');
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const response = await fetch(url.toString(), {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'VayuSaathi-AirQualityApp/1.0 (https://vayusaathi-aqi-globe.vercel.app)',
+        Accept: 'application/json',
+      },
+    });
+    if (!response.ok) {
+      return {
+        status: 502,
+        body: { ok: false, error: `Reverse geocoding failed (${response.status}).` },
+      };
+    }
+
+    const data = (await response.json()) as {
+      display_name?: string;
+      name?: string;
+      address?: Record<string, string | undefined>;
+    };
+
+    const addr = data.address ?? {};
+    const locality =
+      addr.neighbourhood ||
+      addr.suburb ||
+      addr.residential ||
+      addr.quarter ||
+      addr.road ||
+      addr.village ||
+      addr.town ||
+      addr.city_district ||
+      data.name ||
+      '';
+    const city =
+      addr.city ||
+      addr.town ||
+      addr.municipality ||
+      addr.village ||
+      addr.county ||
+      addr.state_district ||
+      '';
+    const state = addr.state || addr.region || '';
+    const postcode = addr.postcode || '';
+    const country = addr.country || '';
+
+    const primaryNameParts: string[] = [];
+    if (locality) primaryNameParts.push(locality);
+    if (city && city.toLowerCase() !== locality.toLowerCase()) {
+      primaryNameParts.push(city);
+    }
+
+    const name =
+      primaryNameParts.join(', ') ||
+      city ||
+      state ||
+      country ||
+      `${lat.toFixed(3)}°, ${lon.toFixed(3)}°`;
+
+    const regionParts: string[] = [];
+    if (state && state.toLowerCase() !== name.toLowerCase()) {
+      regionParts.push(postcode ? `${state} ${postcode}` : state);
+    } else if (postcode) {
+      regionParts.push(postcode);
+    }
+    if (country && country.toLowerCase() !== state.toLowerCase()) {
+      regionParts.push(country);
+    }
+
+    const ns = lat >= 0 ? 'N' : 'S';
+    const ew = lon >= 0 ? 'E' : 'W';
+    const regionLabel =
+      regionParts.join(', ') ||
+      `${Math.abs(lat).toFixed(3)}°${ns}, ${Math.abs(lon).toFixed(3)}°${ew}`;
+
+    const exactAreaLabel = [locality, city, state, country]
+      .filter((v, idx, arr) => Boolean(v) && arr.indexOf(v) === idx)
+      .join(', ');
+
+    const body = {
+      ok: true,
+      name,
+      state: regionLabel,
+      exactAreaLabel: exactAreaLabel || data.display_name || name,
+      displayName: data.display_name || exactAreaLabel || name,
+    };
+
+    reverseGeocodeCache.set(cacheKey, {
+      expiresAt: Date.now() + 10 * 60 * 1000,
+      body,
+    });
+
+    return { status: 200, body };
+  } catch (err) {
+    return {
+      status: 502,
+      body: {
+        ok: false,
+        error: err instanceof Error ? err.message : 'Reverse geocoding timed out.',
+      },
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}

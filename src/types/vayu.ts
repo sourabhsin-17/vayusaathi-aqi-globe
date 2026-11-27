@@ -30,6 +30,8 @@ export interface IndianLocation {
   latitude: number;
   longitude: number;
   isCurrentLocation?: boolean;
+  exactAreaLabel?: string;
+  accuracyMeters?: number;
 }
 
 export interface HouseholdMembers {

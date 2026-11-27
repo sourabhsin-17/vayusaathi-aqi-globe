@@ -7,6 +7,7 @@ import {
   handleAssistant,
   handleHealth,
   handleRecommendations,
+  handleReverseGeocode,
 } from './src/lib/serverAiHandlers.ts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -20,6 +21,11 @@ async function createServer() {
 
   app.get('/api/health', (_req: Request, res: Response) => {
     const result = handleHealth();
+    res.status(result.status).json(result.body);
+  });
+
+  app.get('/api/reverse-geocode', async (req: Request, res: Response) => {
+    const result = await handleReverseGeocode(req.query.lat, req.query.lon);
     res.status(result.status).json(result.body);
   });
 

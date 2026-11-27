@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MotionConfig } from 'motion/react';
 import { AlertTriangle, SlidersHorizontal, X } from 'lucide-react';
 import { AskAssistant } from './components/AskAssistant';
@@ -8,6 +8,7 @@ import { CityAqiDirectory } from './components/CityAqiDirectory';
 import { CityHeroCarousel } from './components/CityHeroCarousel';
 import { DashboardSections } from './components/DashboardSections';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { LiveGpsHealthBanner, type GpsSyncStatus } from './components/LiveGpsHealthBanner';
 import { LiveOverviewCard } from './components/LiveOverviewCard';
 import { LocationExplorer } from './components/LocationExplorer';
 import { SetupWizard } from './components/SetupWizard';
@@ -18,11 +19,24 @@ import {
   getLastKnownSnapshot,
   LIVE_UNAVAILABLE_MESSAGE,
 } from './lib/airQualityService';
+import {
+  buildFallbackCoordinateLocation,
+  evaluateHealthWarning,
+  getNotificationPermissionState,
+  requestHealthNotificationPermission,
+  resolveExactLocationFromCoords,
+  sendBrowserHealthNotification,
+} from './lib/geolocationService';
 import { t } from './lib/i18n';
 import { DEFAULT_PROFILE, type SamplePersona } from './lib/personas';
 import { fetchPersonalizedAdvisory } from './lib/recommendationService';
 import { householdProfileSchema } from './lib/validators';
-import type { AdvisoryResult, AirQualitySnapshot, HouseholdProfile } from './types/vayu';
+import type {
+  AdvisoryResult,
+  AirQualitySnapshot,
+  HouseholdProfile,
+  IndianLocation,
+} from './types/vayu';
 
 const PROFILE_STORAGE_KEY = 'vayusaathi_profile_v1';
 const EASY_READ_STORAGE_KEY = 'vayusaathi_easy_read_v1';
@@ -68,9 +82,7 @@ function loadEasyReadPreference(): boolean {
 export default function App() {
   const initial = loadSavedProfile();
   const [profile, setProfile] = useState<HouseholdProfile>(initial.profile);
-  const [view, setView] = useState<'setup' | 'dashboard'>(
-    initial.hasSaved ? 'dashboard' : 'setup'
-  );
+  const [view, setView] = useState<'setup' | 'dashboard'>('dashboard');
   const [easyRead, setEasyRead] = useState<boolean>(loadEasyReadPreference);
 
   const [snapshot, setSnapshot] = useState<AirQualitySnapshot | null>(null);
@@ -81,12 +93,24 @@ export default function App() {
   const [advisoryLoading, setAdvisoryLoading] = useState(false);
   const [mapsQuotaExceeded, setMapsQuotaExceeded] = useState(false);
 
+  const [gpsStatus, setGpsStatus] = useState<GpsSyncStatus>(
+    initial.profile.location.isCurrentLocation ? 'locked' : 'idle'
+  );
+  const [gpsStatusNote, setGpsStatusNote] = useState<string | null>(null);
+  const [notificationPermission, setNotificationPermission] = useState<
+    NotificationPermission | 'unsupported'
+  >(() => getNotificationPermissionState());
+  const [warningDismissedKey, setWarningDismissedKey] = useState<string | null>(null);
+  const [browserAlertSentKey, setBrowserAlertSentKey] = useState<string | null>(null);
+
   const profileRef = useRef(profile);
   profileRef.current = profile;
   const snapshotRef = useRef(snapshot);
   snapshotRef.current = snapshot;
   const requestSeqRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const geoAbortRef = useRef<AbortController | null>(null);
+  const didAutoAttemptGpsRef = useRef(false);
 
   const lang = profile.language;
 
@@ -99,6 +123,7 @@ export default function App() {
   useEffect(() => {
     return () => {
       abortControllerRef.current?.abort();
+      geoAbortRef.current?.abort();
     };
   }, []);
 
@@ -119,6 +144,131 @@ export default function App() {
       // Ignore quota errors
     }
   }, [easyRead]);
+
+  const detectAndLockGps = useCallback((isAutomatic: boolean) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setGpsStatus('unavailable');
+      setGpsStatusNote(
+        profileRef.current.language === 'hi'
+          ? 'इस डिवाइस में GPS उपलब्ध नहीं है — ऊपर से अपना शहर खोजें।'
+          : 'Browser GPS is unavailable here — search or pick your city below.'
+      );
+      return;
+    }
+
+    setGpsStatus('locating');
+    setGpsStatusNote(
+      profileRef.current.language === 'hi'
+        ? 'सटीक GPS क्षेत्र और लाइव AQI खोज रहे हैं...'
+        : 'Pinpointing your exact GPS neighborhood and live AQI...'
+    );
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const currentLang = profileRef.current.language;
+        const lat = Number(pos.coords.latitude.toFixed(4));
+        const lon = Number(pos.coords.longitude.toFixed(4));
+        const accuracy = Number.isFinite(pos.coords.accuracy)
+          ? pos.coords.accuracy
+          : undefined;
+
+        const immediateLocation = buildFallbackCoordinateLocation(
+          lat,
+          lon,
+          currentLang,
+          accuracy
+        );
+
+        setProfile((prev) => ({ ...prev, location: immediateLocation }));
+        setGpsStatus('locked');
+        setGpsStatusNote(
+          currentLang === 'hi'
+            ? 'GPS निर्देशांक मिल गए — सटीक मोहल्ला/क्षेत्र की पुष्टि की जा रही है...'
+            : 'GPS coordinates locked — resolving your exact street & neighborhood...'
+        );
+
+        geoAbortRef.current?.abort();
+        const controller = new AbortController();
+        geoAbortRef.current = controller;
+
+        void resolveExactLocationFromCoords(
+          lat,
+          lon,
+          currentLang,
+          accuracy,
+          controller.signal
+        ).then((resolvedLocation) => {
+          if (controller.signal.aborted) return;
+          if (profileRef.current.location.id !== immediateLocation.id) return;
+
+          setProfile((prev) =>
+            prev.location.id === immediateLocation.id
+              ? { ...prev, location: resolvedLocation }
+              : prev
+          );
+          setSnapshot((prev) =>
+            prev && prev.location.id === immediateLocation.id
+              ? { ...prev, location: resolvedLocation }
+              : prev
+          );
+          setGpsStatusNote(null);
+        });
+      },
+      (err) => {
+        const currentLang = profileRef.current.language;
+        const denied = err?.code === 1;
+        setGpsStatus(denied ? 'denied' : 'unavailable');
+        setGpsStatusNote(
+          denied
+            ? currentLang === 'hi'
+              ? isAutomatic
+                ? 'GPS अनुमति अस्वीकृत है। लाइव स्थान AQI के लिए "मेरा GPS स्थान लें" दबाएं या अपना शहर खोजें।'
+                : 'GPS अनुमति अस्वीकृत है। कृपया ब्राउज़र साइट सेटिंग्स में लोकेशन चालू करें या शहर खोजें।'
+              : isAutomatic
+              ? 'Location permission is blocked. Click "Use My GPS" after enabling location, or search your city below.'
+              : 'Location permission denied. Allow location access in browser settings or search your city below.'
+            : currentLang === 'hi'
+            ? 'GPS सिग्नल नहीं मिल सका। नीचे से अपना शहर चुनें या पुनः प्रयास करें।'
+            : 'Could not acquire GPS fix right now. Retry GPS or pick your city below.'
+        );
+      },
+      { enableHighAccuracy: true, timeout: 9000, maximumAge: 60000 }
+    );
+  }, []);
+
+  // Automatically connect to GPS once when the app opens (never re-prompts if denied)
+  useEffect(() => {
+    if (didAutoAttemptGpsRef.current) return;
+    didAutoAttemptGpsRef.current = true;
+
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setGpsStatus('unavailable');
+      return;
+    }
+
+    const permQuery = navigator.permissions?.query;
+    if (typeof permQuery === 'function') {
+      navigator.permissions
+        .query({ name: 'geolocation' })
+        .then((status) => {
+          if (status.state === 'denied') {
+            setGpsStatus('denied');
+            setGpsStatusNote(
+              profileRef.current.language === 'hi'
+                ? 'ब्राउज़र में GPS लोकेशन ब्लॉक है। क्षेत्र का लाइव AQI देखने के लिए शहर खोजें या अनुमति दें।'
+                : 'Location access is blocked in your browser. Enable it or search your city to check local AQI.'
+            );
+            return;
+          }
+          detectAndLockGps(true);
+        })
+        .catch(() => {
+          detectAndLockGps(true);
+        });
+    } else {
+      detectAndLockGps(true);
+    }
+  }, [detectAndLockGps]);
 
   const loadTelemetryAndAdvisory = useCallback(
     async (targetProfile: HouseholdProfile, forceRefresh = false) => {
@@ -145,12 +295,23 @@ export default function App() {
         });
         if (seq !== requestSeqRef.current || controller.signal.aborted) return;
 
-        setSnapshot(liveSnapshot);
+        // Preserve any resolved exactAreaLabel / accuracyMeters on the active location
+        const latestLoc =
+          profileRef.current.location.id === liveSnapshot.location.id
+            ? profileRef.current.location
+            : liveSnapshot.location;
+
+        const normalizedSnapshot: AirQualitySnapshot = {
+          ...liveSnapshot,
+          location: latestLoc,
+        };
+
+        setSnapshot(normalizedSnapshot);
         setAqLoading(false);
 
         setAdvisoryLoading(true);
         const advice = await fetchPersonalizedAdvisory(
-          liveSnapshot,
+          normalizedSnapshot,
           targetProfile,
           controller.signal
         );
@@ -226,12 +387,55 @@ export default function App() {
     };
   }, [view, loadTelemetryAndAdvisory]);
 
+  const healthWarning = useMemo(
+    () => evaluateHealthWarning(snapshot, profile, lang),
+    [snapshot, profile, lang]
+  );
+
+  const activeWarningKey =
+    snapshot && healthWarning ? `${snapshot.location.id}_${healthWarning.severity}` : null;
+
+  useEffect(() => {
+    if (!snapshot || !healthWarning || !activeWarningKey) return;
+    if (notificationPermission === 'granted') {
+      const sent = sendBrowserHealthNotification(healthWarning, snapshot.location, lang);
+      if (sent) {
+        setBrowserAlertSentKey(activeWarningKey);
+      }
+    }
+  }, [snapshot, healthWarning, activeWarningKey, notificationPermission, lang]);
+
+  const handleEnableNotifications = useCallback(async () => {
+    const result = await requestHealthNotificationPermission();
+    setNotificationPermission(result);
+    if (result === 'granted' && snapshotRef.current && healthWarning) {
+      const sent = sendBrowserHealthNotification(
+        healthWarning,
+        snapshotRef.current.location,
+        profileRef.current.language
+      );
+      if (sent && activeWarningKey) {
+        setBrowserAlertSentKey(activeWarningKey);
+      }
+    }
+  }, [healthWarning, activeWarningKey]);
+
+  const handleSelectLocation = useCallback((loc: IndianLocation) => {
+    geoAbortRef.current?.abort();
+    setProfile((prev) => ({ ...prev, location: loc }));
+    setGpsStatus(loc.isCurrentLocation ? 'locked' : 'manual');
+    setGpsStatusNote(null);
+  }, []);
+
   const handleSelectPersona = (persona: SamplePersona) => {
+    geoAbortRef.current?.abort();
     const nextProfile: HouseholdProfile = {
       ...persona.profile,
       language: profile.language,
     };
     setProfile(nextProfile);
+    setGpsStatus('manual');
+    setGpsStatusNote(null);
     setView('dashboard');
   };
 
