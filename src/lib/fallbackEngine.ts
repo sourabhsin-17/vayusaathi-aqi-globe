@@ -240,8 +240,8 @@ export function generateFallbackAdvisory(
         ? 'हल्की गतिविधि बाहर ठीक है, भारी ट्रैफिक सड़कों से बचें'
         : 'Light outdoor walk acceptable away from busy intersections',
       why: hi
-        ? `सुबह ठंडी हवा व कम हवा गति (${snapshot.weather.windSpeedKmh} km/h) जमीन के पास धुआं रोकती है।`
-        : `Morning thermal inversion and ${snapshot.weather.windSpeedKmh} km/h wind often trap ground-level PM2.5 near ${pm25} µg/m³.`,
+        ? `सुबह ठंडी हवा${snapshot.weather.windSpeedKmh !== null ? ` व कम हवा गति (${snapshot.weather.windSpeedKmh} km/h)` : ''} जमीन के पास धुआं रोकती है।`
+        : `Morning thermal inversion${snapshot.weather.windSpeedKmh !== null ? ` and ${snapshot.weather.windSpeedKmh} km/h wind` : ''} often trap ground-level PM2.5 near ${pm25} µg/m³.`,
       when: '6:00 AM – 9:30 AM',
       whoFor: hasElderlyOrSensitive
         ? hi

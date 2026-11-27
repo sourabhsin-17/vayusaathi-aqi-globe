@@ -188,13 +188,13 @@ export function LiveOverviewCard({
         className="obsidian-surface rounded-3xl p-6 space-y-5 animate-pulse"
       >
         <div className="h-6 w-56 rounded bg-white/10" />
-        <div className="h-24 rounded-2xl bg-[#0B0A16]" />
+        <div className="h-24 rounded-2xl bg-[#0C1322]" />
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-          <div className="h-44 rounded-2xl bg-[#14163F] lg:col-span-5" />
-          <div className="h-44 rounded-2xl bg-[#14122E] lg:col-span-4" />
-          <div className="h-44 rounded-2xl bg-[#0B0A16] lg:col-span-3" />
+          <div className="h-44 rounded-2xl bg-[#182947] lg:col-span-5" />
+          <div className="h-44 rounded-2xl bg-[#142138] lg:col-span-4" />
+          <div className="h-44 rounded-2xl bg-[#0C1322] lg:col-span-3" />
         </div>
-        <div className="h-48 rounded-2xl bg-[#0B0A16]" />
+        <div className="h-48 rounded-2xl bg-[#0C1322]" />
       </section>
     );
   }
@@ -218,8 +218,8 @@ export function LiveOverviewCard({
                   लाइव वायु गुणवत्ता डेटा अस्थायी रूप से अनुपलब्ध है।
                 </p>
               ) : null}
-              <p className="text-sm text-[#A7A3C7]">{error}</p>
-              <p className="text-xs text-[#A7A3C7]/80">
+              <p className="text-sm text-[#9FB0C7]">{error}</p>
+              <p className="text-xs text-[#9FB0C7]/80">
                 {lang === 'hi'
                   ? 'VayuSaathi कभी भी नकली या काल्पनिक आंकड़े नहीं दिखाता।'
                   : 'VayuSaathi never fabricates or substitutes simulated pollution readings.'}
@@ -229,9 +229,9 @@ export function LiveOverviewCard({
           <button
             type="button"
             onClick={onRetry}
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#67E8F9] px-4 py-2 text-sm font-semibold text-[#0B0A16] hover:bg-[#A5F3FC] whitespace-nowrap shrink-0"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#38BDF8] px-4 py-2 text-sm font-semibold text-[#0C1322] hover:bg-[#7DD3FC] whitespace-nowrap shrink-0"
           >
-            <RefreshCw className="h-4 w-4 text-[#0B0A16]" aria-hidden="true" />
+            <RefreshCw className="h-4 w-4 text-[#0C1322]" aria-hidden="true" />
             <span>{t(lang, 'retryFetch')}</span>
           </button>
         </div>
@@ -260,7 +260,7 @@ export function LiveOverviewCard({
       : 'border-rose-400/35 bg-rose-500/12 text-[#E6EDF7]';
 
   const getPollutantTone = (val: number | null, max: number) => {
-    if (val === null) return { barFill: 'bg-white/20', accentText: 'text-[#A7A3C7]' };
+    if (val === null) return { barFill: 'bg-white/20', accentText: 'text-[#9FB0C7]' };
     const ratio = val / max;
     if (ratio >= 0.9) return { barFill: 'bg-rose-400', accentText: 'text-rose-300' };
     if (ratio >= 0.45) return { barFill: 'bg-amber-400', accentText: 'text-amber-300' };
@@ -352,7 +352,7 @@ export function LiveOverviewCard({
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-4">
         <div className="space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="font-mono-tabular text-[11px] font-semibold uppercase tracking-wider text-[#67E8F9]">
+            <p className="font-mono-tabular text-[11px] font-semibold uppercase tracking-wider text-[#38BDF8]">
               01. {lang === 'hi' ? 'सत्यापित वर्तमान रीडिंग' : 'Current Air Reading'}
             </p>
             {snapshot.isStale ? (
@@ -361,7 +361,7 @@ export function LiveOverviewCard({
                 {lang === 'hi' ? 'पुरानी रीडिंग (कैश्ड)' : 'Older reading (cached)'}
               </span>
             ) : snapshot.fromCache ? (
-              <span className="rounded-md border border-white/15 bg-[#0B0A16] px-2 py-0.5 text-[11px] font-medium text-[#A7A3C7]">
+              <span className="rounded-md border border-white/15 bg-[#0C1322] px-2 py-0.5 text-[11px] font-medium text-[#9FB0C7]">
                 {lang === 'hi' ? '5-मिनट कैश' : '5-min cache'}
               </span>
             ) : (
@@ -373,7 +373,7 @@ export function LiveOverviewCard({
           <h2 className="text-2xl font-semibold tracking-tight text-[#E6EDF7] font-display sm:text-3xl">
             {t(lang, 'liveAirTitle')} — {snapshot.location.name}, {snapshot.location.state}
           </h2>
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-[#A7A3C7]">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-[#9FB0C7]">
             <span>
               {t(lang, 'sourcePrefix')} <strong className="text-[#E6EDF7]">{snapshot.sourceName}</strong>
             </span>
@@ -386,7 +386,7 @@ export function LiveOverviewCard({
               {freshness}
             </span>
             <span aria-hidden="true">·</span>
-            <span className="text-[#67E8F9]">
+            <span className="text-[#38BDF8]">
               {lang === 'hi' ? 'स्वतः जांच हर 5 मिनट' : 'Auto-checks every 5m'}
             </span>
           </div>
@@ -396,9 +396,9 @@ export function LiveOverviewCard({
           type="button"
           onClick={onRefresh}
           disabled={loading}
-          className="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-[#67E8F9] px-4 py-2 text-xs font-semibold text-[#0B0A16] hover:bg-[#A5F3FC] disabled:opacity-60 whitespace-nowrap shrink-0"
+          className="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-[#38BDF8] px-4 py-2 text-xs font-semibold text-[#0C1322] hover:bg-[#7DD3FC] disabled:opacity-60 whitespace-nowrap shrink-0"
         >
-          <RefreshCw className={`h-3.5 w-3.5 text-[#0B0A16] ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
+          <RefreshCw className={`h-3.5 w-3.5 text-[#0C1322] ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
           <span>{loading ? t(lang, 'refreshing') : t(lang, 'refreshData')}</span>
         </button>
       </div>
@@ -421,7 +421,7 @@ export function LiveOverviewCard({
           <button
             type="button"
             onClick={onRetry}
-            className="inline-flex min-h-[36px] items-center rounded-lg border border-[#67E8F9]/50 bg-[#0B0A16] px-3 py-1 font-semibold text-[#67E8F9] hover:bg-[#14163F]"
+            className="inline-flex min-h-[36px] items-center rounded-lg border border-[#38BDF8]/50 bg-[#0C1322] px-3 py-1 font-semibold text-[#38BDF8] hover:bg-[#182947]"
           >
             {t(lang, 'retryFetch')}
           </button>
@@ -460,8 +460,8 @@ export function LiveOverviewCard({
                   onClick={() => setAudience(opt.key)}
                   className={`min-h-[30px] rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
                     active
-                      ? 'border-[#67E8F9] bg-[#67E8F9] text-[#0B0A16]'
-                      : 'border-white/12 bg-[#0B0A16]/75 text-[#E6EDF7] hover:bg-[#14163F]'
+                      ? 'border-[#38BDF8] bg-[#38BDF8] text-[#0C1322]'
+                      : 'border-white/12 bg-[#0C1322]/75 text-[#E6EDF7] hover:bg-[#182947]'
                   }`}
                 >
                   {lang === 'hi' ? opt.labelHi : opt.labelEn}
@@ -480,7 +480,7 @@ export function LiveOverviewCard({
       {/* ARCHITECTURAL TOP METRICS ROW (5 + 4 + 3 = 12 cols) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         {/* 5 Cols: Deep Cosmic Indigo Stage US AQI + Progress Ring */}
-        <div className="flex items-center gap-4 rounded-2xl border border-[#67E8F9]/25 bg-[#14163F] p-5 text-[#E6EDF7] lg:col-span-5">
+        <div className="flex items-center gap-4 rounded-2xl border border-[#38BDF8]/25 bg-[#182947] p-5 text-[#E6EDF7] lg:col-span-5">
           <AirProgressRing
             usAqi={snapshot.current.usAqi}
             label={lang === 'hi' ? usLabel.hi : usLabel.en}
@@ -490,14 +490,14 @@ export function LiveOverviewCard({
             lang={lang}
           />
           <div className="min-w-0 flex-1 space-y-1.5">
-            <p className="font-mono-tabular text-[11px] font-semibold uppercase tracking-wider text-[#67E8F9]">
+            <p className="font-mono-tabular text-[11px] font-semibold uppercase tracking-wider text-[#38BDF8]">
               {t(lang, 'usAqiLabel')} · Scale 0–500
               {snapshot.usAqiDerivedFromPm25 ? ' (EPA PM2.5)' : ''}
             </p>
             <p className="font-display text-xl font-semibold text-white leading-tight">
               {lang === 'hi' ? usLabel.hi : usLabel.en}
             </p>
-            <p className="text-xs text-[#A7A3C7] font-mono-tabular">
+            <p className="text-xs text-[#9FB0C7] font-mono-tabular">
               {t(lang, 'dominantPollutant')}: <strong className="text-[#E6EDF7]">{snapshot.dominantPollutant}</strong>
               {' · '}PM2.5 {snapshot.current.pm25} µg/m³
             </p>
@@ -506,16 +506,16 @@ export function LiveOverviewCard({
                 ? `WHO 2021 सीमा से ${whoMultiple}×`
                 : `${whoMultiple}× WHO 2021 limit`}
             </p>
-            <p className="text-[11px] text-[#A7A3C7]/80 font-mono-tabular truncate">
+            <p className="text-[11px] text-[#9FB0C7]/80 font-mono-tabular truncate">
               {snapshot.sourceName} · {freshness}
             </p>
           </div>
         </div>
 
         {/* 4 Cols: Smoked Obsidian Indian CPCB & European AQI Card */}
-        <div className="flex flex-col justify-between rounded-2xl border border-white/12 bg-[#14122E] p-5 text-[#E6EDF7] lg:col-span-4">
+        <div className="flex flex-col justify-between rounded-2xl border border-white/12 bg-[#142138] p-5 text-[#E6EDF7] lg:col-span-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-[#67E8F9]">
+            <p className="text-xs font-bold uppercase tracking-wider text-[#38BDF8]">
               {t(lang, 'cpcbLabel')}
             </p>
             <div className="mt-2.5 flex flex-wrap items-center gap-2">
@@ -528,22 +528,22 @@ export function LiveOverviewCard({
               CPCB est. index: <strong>{snapshot.cpcb.estimatedSubIndex}</strong> ({snapshot.cpcb.dominantPmPollutant} driven)
             </p>
             {euLabel && snapshot.current.europeanAqi !== null && snapshot.current.europeanAqi !== undefined ? (
-              <p className="mt-1 text-xs text-[#A7A3C7] font-mono-tabular">
+              <p className="mt-1 text-xs text-[#9FB0C7] font-mono-tabular">
                 {lang === 'hi' ? 'यूरोपीय EAQI:' : 'European EAQI:'}{' '}
                 <strong className="text-[#E6EDF7]">{snapshot.current.europeanAqi}</strong> ({lang === 'hi' ? euLabel.hi : euLabel.en})
               </p>
             ) : null}
 
             <div className="mt-3 space-y-1">
-              <div className="relative h-2 w-full overflow-hidden rounded-full bg-[#0B0A16] flex">
+              <div className="relative h-2 w-full overflow-hidden rounded-full bg-[#0C1322] flex">
                 <div className="h-full w-1/6 bg-[#5DCAA5]" title="Good (0-30)" />
-                <div className="h-full w-1/6 bg-[#67E8F9]" title="Satisfactory (31-60)" />
+                <div className="h-full w-1/6 bg-[#38BDF8]" title="Satisfactory (31-60)" />
                 <div className="h-full w-1/6 bg-amber-400" title="Moderate (61-90)" />
                 <div className="h-full w-1/6 bg-orange-400" title="Poor (91-120)" />
                 <div className="h-full w-1/6 bg-rose-400" title="Very Poor (121-250)" />
                 <div className="h-full w-1/6 bg-red-500" title="Severe (250+)" />
               </div>
-              <div className="flex justify-between text-[10px] text-[#A7A3C7] font-mono-tabular">
+              <div className="flex justify-between text-[10px] text-[#9FB0C7] font-mono-tabular">
                 <span>Good</span>
                 <span>Mod</span>
                 <span>Poor</span>
@@ -551,69 +551,74 @@ export function LiveOverviewCard({
               </div>
             </div>
           </div>
-          <p className="mt-3 text-[11px] text-[#A7A3C7]">
+          <p className="mt-3 text-[11px] text-[#9FB0C7]">
             {lang === 'hi' ? snapshot.cpcb.attributionLabelHi : snapshot.cpcb.attributionLabelEn}
           </p>
         </div>
 
         {/* 3 Cols: Midnight Obsidian Live Weather & Dispersion Card */}
-        <div className="flex flex-col justify-between rounded-2xl border border-white/12 bg-[#0B0A16]/85 p-5 text-[#E6EDF7] lg:col-span-3">
+        <div className="flex flex-col justify-between rounded-2xl border border-white/12 bg-[#0C1322]/85 p-5 text-[#E6EDF7] lg:col-span-3">
           <div>
             <div className="flex items-baseline justify-between gap-2">
-              <p className="text-xs font-bold uppercase tracking-wider text-[#A7A3C7]">
+              <p className="text-xs font-bold uppercase tracking-wider text-[#9FB0C7]">
                 {t(lang, 'weatherLabel')}
               </p>
-              <span className="text-[11px] font-semibold text-[#67E8F9]">
+              <span className="text-[11px] font-semibold text-[#38BDF8]">
                 {lang === 'hi' ? snapshot.weather.weatherLabelHi : snapshot.weather.weatherLabelEn}
               </span>
             </div>
             <div className="mt-3 grid grid-cols-3 gap-2">
               <div>
-                <div className="flex items-center gap-1 text-[11px] text-[#A7A3C7]">
-                  <Thermometer className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
+                <div className="flex items-center gap-1 text-[11px] text-[#9FB0C7]">
+                  <Thermometer className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
                   <span>{t(lang, 'tempLabel')}</span>
                 </div>
                 <p className="mt-1 text-xl font-bold font-mono-tabular text-[#E6EDF7]">
-                  {snapshot.weather.temperatureC}°C
+                  {snapshot.weather.temperatureC !== null ? `${snapshot.weather.temperatureC}°C` : '--'}
                 </p>
                 {snapshot.weather.apparentTemperatureC !== null &&
                 snapshot.weather.apparentTemperatureC !== undefined ? (
-                  <p className="text-[10px] text-[#A7A3C7] font-mono-tabular">
+                  <p className="text-[10px] text-[#9FB0C7] font-mono-tabular">
                     Feels {snapshot.weather.apparentTemperatureC}°
                   </p>
                 ) : null}
               </div>
               <div>
-                <div className="flex items-center gap-1 text-[11px] text-[#A7A3C7]">
-                  <Droplets className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
+                <div className="flex items-center gap-1 text-[11px] text-[#9FB0C7]">
+                  <Droplets className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
                   <span>RH</span>
                 </div>
                 <p className="mt-1 text-xl font-bold font-mono-tabular text-[#E6EDF7]">
-                  {snapshot.weather.humidityPct}%
+                  {snapshot.weather.humidityPct !== null ? `${snapshot.weather.humidityPct}%` : '--'}
                 </p>
                 {snapshot.weather.precipitationMm !== null &&
                 snapshot.weather.precipitationMm !== undefined ? (
-                  <p className="text-[10px] text-[#A7A3C7] font-mono-tabular">
+                  <p className="text-[10px] text-[#9FB0C7] font-mono-tabular">
                     Rain {snapshot.weather.precipitationMm}mm
                   </p>
                 ) : null}
               </div>
               <div>
-                <div className="flex items-center gap-1 text-[11px] text-[#A7A3C7]">
-                  <Wind className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
+                <div className="flex items-center gap-1 text-[11px] text-[#9FB0C7]">
+                  <Wind className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
                   <span>Wind</span>
                 </div>
                 <p className="mt-1 text-xl font-bold font-mono-tabular text-[#E6EDF7]">
-                  {snapshot.weather.windSpeedKmh}
+                  {snapshot.weather.windSpeedKmh !== null ? snapshot.weather.windSpeedKmh : '--'}
                 </p>
-                <p className="text-[10px] text-[#A7A3C7] font-mono-tabular">
-                  km/h{snapshot.current.uvIndex !== null && snapshot.current.uvIndex !== undefined ? ` · UV ${snapshot.current.uvIndex}` : ''}
+                <p className="text-[10px] text-[#9FB0C7] font-mono-tabular">
+                  {snapshot.weather.windSpeedKmh !== null ? 'km/h' : 'unavailable'}
+                  {snapshot.current.uvIndex !== null && snapshot.current.uvIndex !== undefined ? ` · UV ${snapshot.current.uvIndex}` : ''}
                 </p>
               </div>
             </div>
           </div>
-          <p className="mt-3 text-[11px] font-medium text-[#A7A3C7]">
-            {snapshot.weather.windSpeedKmh < 7
+          <p className="mt-3 text-[11px] font-medium text-[#9FB0C7]">
+            {snapshot.weather.windSpeedKmh === null
+              ? lang === 'hi'
+                ? 'ताजा हवा गति डेटा अभी उपलब्ध नहीं है।'
+                : 'Live surface wind reading temporarily unavailable.'
+              : snapshot.weather.windSpeedKmh < 7
               ? lang === 'hi'
                 ? 'धीमी हवा — प्रदूषक जमीन के पास रुक सकते हैं।'
                 : 'Calm wind (<7 km/h) — smog lingers near streets.'
@@ -628,7 +633,7 @@ export function LiveOverviewCard({
       {snapshot.verification ? (
         <div
           aria-label={lang === 'hi' ? 'बहु-स्रोत AQI सत्यापन' : 'Multi-source AQI verification'}
-          className="flex flex-col gap-2.5 rounded-2xl border border-white/12 bg-[#0B0A16]/90 px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-2.5 rounded-2xl border border-white/12 bg-[#0C1322]/90 px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between"
         >
           <div className="flex items-start gap-2.5 sm:items-center">
             {snapshot.verification.overallAgreement === 'high_agreement' ? (
@@ -636,7 +641,7 @@ export function LiveOverviewCard({
             ) : snapshot.verification.overallAgreement === 'moderate_variance' ? (
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300 sm:mt-0" aria-hidden="true" />
             ) : (
-              <Radio className="mt-0.5 h-4 w-4 shrink-0 text-[#67E8F9] sm:mt-0" aria-hidden="true" />
+              <Radio className="mt-0.5 h-4 w-4 shrink-0 text-[#38BDF8] sm:mt-0" aria-hidden="true" />
             )}
             <div className="min-w-0">
               <p className="font-semibold text-[#E6EDF7]">
@@ -647,7 +652,7 @@ export function LiveOverviewCard({
                       ? 'text-[#5DCAA5]'
                       : snapshot.verification.overallAgreement === 'moderate_variance'
                       ? 'text-amber-300'
-                      : 'text-[#67E8F9]'
+                      : 'text-[#38BDF8]'
                   }
                 >
                   {snapshot.verification.overallAgreement === 'high_agreement'
@@ -663,20 +668,20 @@ export function LiveOverviewCard({
                     : 'CAMS + US EPA & CPCB Formula Verified'}
                 </span>
               </p>
-              <p className="mt-0.5 text-[11px] text-[#A7A3C7]">
+              <p className="mt-0.5 text-[11px] text-[#9FB0C7]">
                 {lang === 'hi' ? snapshot.verification.notesHi : snapshot.verification.notesEn}
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 font-mono-tabular text-[11px] shrink-0">
-            <div className="rounded-lg border border-white/10 bg-[#14122E] px-2.5 py-1">
-              <span className="text-[#A7A3C7]">EPA PM2.5 Check: </span>
+            <div className="rounded-lg border border-white/10 bg-[#142138] px-2.5 py-1">
+              <span className="text-[#9FB0C7]">EPA PM2.5 Check: </span>
               <strong className="text-[#E6EDF7]">{snapshot.verification.epaCalculatedUsAqi}</strong>
-              <span className="text-[#A7A3C7]"> (Δ{snapshot.verification.usAqiDelta})</span>
+              <span className="text-[#9FB0C7]"> (Δ{snapshot.verification.usAqiDelta})</span>
             </div>
-            <div className="rounded-lg border border-white/10 bg-[#14122E] px-2.5 py-1">
-              <span className="text-[#A7A3C7]">
+            <div className="rounded-lg border border-white/10 bg-[#142138] px-2.5 py-1">
+              <span className="text-[#9FB0C7]">
                 {lang === 'hi' ? 'ग्राउंड सेंसर: ' : 'Ground Nodes: '}
               </span>
               {snapshot.verification.groundCheck.status === 'matched' &&
@@ -686,7 +691,7 @@ export function LiveOverviewCard({
                   {snapshot.verification.groundCheck.medianPm25} µg/m³
                 </strong>
               ) : (
-                <strong className="text-[#A7A3C7]">
+                <strong className="text-[#9FB0C7]">
                   {lang === 'hi' ? '35km में 0' : '0 in 35km'}
                 </strong>
               )}
@@ -699,12 +704,12 @@ export function LiveOverviewCard({
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-[#E6EDF7]">{t(lang, 'pollutantTableTitle')}</h3>
-          <div className="inline-flex items-center rounded-xl border border-white/12 bg-[#0B0A16] p-0.5">
+          <div className="inline-flex items-center rounded-xl border border-white/12 bg-[#0C1322] p-0.5">
             <button
               type="button"
               onClick={() => setPollutantView('bento')}
               className={`inline-flex min-h-[30px] items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
-                pollutantView === 'bento' ? 'bg-[#14163F] text-[#67E8F9]' : 'text-[#A7A3C7]'
+                pollutantView === 'bento' ? 'bg-[#182947] text-[#38BDF8]' : 'text-[#9FB0C7]'
               }`}
             >
               <LayoutGrid className="h-3.5 w-3.5" aria-hidden="true" />
@@ -714,7 +719,7 @@ export function LiveOverviewCard({
               type="button"
               onClick={() => setPollutantView('table')}
               className={`inline-flex min-h-[30px] items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
-                pollutantView === 'table' ? 'bg-[#14163F] text-[#67E8F9]' : 'text-[#A7A3C7]'
+                pollutantView === 'table' ? 'bg-[#182947] text-[#38BDF8]' : 'text-[#9FB0C7]'
               }`}
             >
               <Table2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -733,12 +738,12 @@ export function LiveOverviewCard({
               return (
                 <div
                   key={item.name}
-                  className="flex flex-col justify-between rounded-2xl border border-white/10 bg-[#0B0A16]/80 p-4"
+                  className="flex flex-col justify-between rounded-2xl border border-white/10 bg-[#0C1322]/80 p-4"
                 >
                   <div>
                     <div className="flex items-baseline justify-between gap-1">
                       <span className={`text-xs font-bold ${item.accentText}`}>{item.name}</span>
-                      <span className="font-mono-tabular text-[10px] text-[#A7A3C7]">{item.unit}</span>
+                      <span className="font-mono-tabular text-[10px] text-[#9FB0C7]">{item.unit}</span>
                     </div>
                     <p className="mt-1.5 font-mono-tabular text-2xl font-extrabold tracking-tight text-[#E6EDF7]">
                       {item.value === null ? '—' : item.value}
@@ -748,7 +753,7 @@ export function LiveOverviewCard({
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
                       <div className={`h-full rounded-full ${item.barFill}`} style={{ width: `${barPct}%` }} />
                     </div>
-                    <p className="text-[10px] font-medium text-[#A7A3C7] leading-snug">
+                    <p className="text-[10px] font-medium text-[#9FB0C7] leading-snug">
                       {item.value === null
                         ? lang === 'hi'
                           ? 'डेटा उपलब्ध नहीं'
@@ -763,7 +768,7 @@ export function LiveOverviewCard({
         ) : (
           <div className="overflow-x-auto rounded-2xl border border-white/12">
             <table className="min-w-full divide-y divide-white/10 text-left text-xs">
-              <thead className="bg-[#0B0A16] text-[#A7A3C7]">
+              <thead className="bg-[#0C1322] text-[#9FB0C7]">
                 <tr>
                   <th scope="col" className="px-4 py-2.5 font-semibold">Pollutant</th>
                   <th scope="col" className="px-4 py-2.5 font-semibold text-right">Reading</th>
@@ -771,17 +776,17 @@ export function LiveOverviewCard({
                   <th scope="col" className="px-4 py-2.5 font-semibold">Primary Context</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/10 bg-[#0F0D22]">
+              <tbody className="divide-y divide-white/10 bg-[#101A2C]">
                 {pollutantCards.map((row) => (
-                  <tr key={row.name} className="hover:bg-[#14163F]/70">
+                  <tr key={row.name} className="hover:bg-[#182947]/70">
                     <td className="px-4 py-2.5 font-semibold text-[#E6EDF7]">{row.name}</td>
-                    <td className="px-4 py-2.5 text-right font-mono-tabular font-semibold text-[#67E8F9]">
+                    <td className="px-4 py-2.5 text-right font-mono-tabular font-semibold text-[#38BDF8]">
                       {row.value === null ? 'Not reported' : `${row.value} ${row.unit}`}
                     </td>
-                    <td className="px-4 py-2.5 text-[#A7A3C7] font-mono-tabular">
+                    <td className="px-4 py-2.5 text-[#9FB0C7] font-mono-tabular">
                       Open-Meteo · {freshness}
                     </td>
-                    <td className="px-4 py-2.5 text-[#A7A3C7]">{row.note}</td>
+                    <td className="px-4 py-2.5 text-[#9FB0C7]">{row.note}</td>
                   </tr>
                 ))}
               </tbody>
@@ -794,7 +799,7 @@ export function LiveOverviewCard({
       <div className="border-t border-white/10 pt-5">
         <Suspense
           fallback={
-            <div className="h-56 w-full animate-pulse rounded-2xl bg-[#0B0A16] p-4 text-xs text-[#A7A3C7]">
+            <div className="h-56 w-full animate-pulse rounded-2xl bg-[#0C1322] p-4 text-xs text-[#9FB0C7]">
               Loading 24-hour forecast chart...
             </div>
           }

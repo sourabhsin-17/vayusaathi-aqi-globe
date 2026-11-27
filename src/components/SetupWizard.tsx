@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -13,6 +13,10 @@ import {
 import { searchGlobalCities } from '../lib/airQualityService';
 import { ALL_MONITORED_CITIES } from '../lib/aqiCities';
 import { getLocationVisualAsset } from '../lib/cityMedia';
+import {
+  buildFallbackCoordinateLocation,
+  resolveExactLocationFromCoords,
+} from '../lib/geolocationService';
 import { t } from '../lib/i18n';
 import {
   GLOBAL_QUICK_PICK_CITIES,
@@ -56,6 +60,16 @@ export function SetupWizard({
   const [geoStatus, setGeoStatus] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [showMapPicker, setShowMapPicker] = useState(false);
+
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
+  const geoAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      geoAbortRef.current?.abort();
+    };
+  }, []);
 
   const lang = profile.language;
 
@@ -112,39 +126,40 @@ export function SetupWizard({
     setIsLocating(true);
     setGeoStatus(null);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
+        const curLang = profileRef.current.language;
         const lat = Number(pos.coords.latitude.toFixed(4));
         const lon = Number(pos.coords.longitude.toFixed(4));
-        const inIndia = lat >= 5 && lat <= 38 && lon >= 65 && lon <= 98;
-        onChangeProfile({
-          ...profile,
-          location: {
-            id: `geo-${lat}-${lon}`,
-            name: lang === 'hi' ? 'मेरा वर्तमान स्थान' : 'My Current Location',
-            state: inIndia
-              ? `India (${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E)`
-              : `GPS (${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E)`,
-            latitude: lat,
-            longitude: lon,
-            isCurrentLocation: true,
-          },
-        });
+        const acc = Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : undefined;
+        const immediate = buildFallbackCoordinateLocation(lat, lon, curLang, acc);
+        onChangeProfile({ ...profileRef.current, location: immediate });
+
+        geoAbortRef.current?.abort();
+        const controller = new AbortController();
+        geoAbortRef.current = controller;
+
+        const resolved = await resolveExactLocationFromCoords(lat, lon, curLang, acc, controller.signal);
+        if (controller.signal.aborted) return;
+        if (profileRef.current.location.id === immediate.id) {
+          onChangeProfile({ ...profileRef.current, location: resolved });
+        }
         setIsLocating(false);
         setGeoStatus(
-          lang === 'hi'
-            ? 'लाइव GPS निर्देशांक सेट हो गए हैं।'
-            : 'Location coordinates detected. Live readings will fetch for your exact area.'
+          profileRef.current.language === 'hi'
+            ? `लाइव GPS क्षेत्र मिल गया: ${resolved.exactAreaLabel ?? resolved.name}`
+            : `Exact GPS area detected: ${resolved.exactAreaLabel ?? resolved.name}`
         );
       },
       () => {
         setIsLocating(false);
+        const curLang = profileRef.current.language;
         setGeoStatus(
-          lang === 'hi'
+          curLang === 'hi'
             ? 'लोकेशन अनुमति अस्वीकृत या अनुपलब्ध है। कृपया नीचे से अपना शहर चुनें।'
             : 'Location permission denied or unavailable. No problem—search or pick your city manually below.'
         );
       },
-      { enableHighAccuracy: false, timeout: 8000 }
+      { enableHighAccuracy: true, timeout: 9000 }
     );
   };
 
@@ -199,7 +214,7 @@ export function SetupWizard({
                 ? 'अपने परिवार और शहर के अनुसार वायु सुरक्षा योजना बनाएं'
                 : 'Build your household air-safety & low-emission plan'}
             </h1>
-            <p className="text-sm text-[#A7A3C7]">
+            <p className="text-sm text-[#9FB0C7]">
               {lang === 'hi'
                 ? 'लाइव Open-Meteo डेटा पर आधारित। सभी प्रोफ़ाइल विकल्प वैकल्पिक हैं।'
                 : 'Powered by live Open-Meteo telemetry. Every profile field is optional with sensible defaults.'}
@@ -213,8 +228,8 @@ export function SetupWizard({
               aria-pressed={easyRead}
               className={`inline-flex min-h-[38px] items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
                 easyRead
-                  ? 'border-[#67E8F9] bg-[#67E8F9] text-[#0B0A16]'
-                  : 'border-white/12 bg-[#0B0A16] text-[#E6EDF7] hover:bg-[#14163F]'
+                  ? 'border-[#38BDF8] bg-[#38BDF8] text-[#0C1322]'
+                  : 'border-white/12 bg-[#0C1322] text-[#E6EDF7] hover:bg-[#182947]'
               }`}
             >
               <Eye className="h-3.5 w-3.5" aria-hidden="true" />
@@ -224,15 +239,15 @@ export function SetupWizard({
             <div
               role="group"
               aria-label={t(lang, 'languageLabel')}
-              className="inline-flex items-center rounded-xl border border-white/12 bg-[#0B0A16] p-1"
+              className="inline-flex items-center rounded-xl border border-white/12 bg-[#0C1322] p-1"
             >
               <button
                 type="button"
                 onClick={() => setLanguage('en')}
                 className={`min-h-[32px] rounded-lg px-3 py-1 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
                   lang === 'en'
-                    ? 'bg-[#67E8F9] text-[#0B0A16]'
-                    : 'text-[#A7A3C7] hover:text-[#E6EDF7]'
+                    ? 'bg-[#38BDF8] text-[#0C1322]'
+                    : 'text-[#9FB0C7] hover:text-[#E6EDF7]'
                 }`}
               >
                 English
@@ -242,8 +257,8 @@ export function SetupWizard({
                 onClick={() => setLanguage('hi')}
                 className={`min-h-[32px] rounded-lg px-3 py-1 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
                   lang === 'hi'
-                    ? 'bg-[#67E8F9] text-[#0B0A16]'
-                    : 'text-[#A7A3C7] hover:text-[#E6EDF7]'
+                    ? 'bg-[#38BDF8] text-[#0C1322]'
+                    : 'text-[#9FB0C7] hover:text-[#E6EDF7]'
                 }`}
               >
                 हिन्दी
@@ -253,8 +268,8 @@ export function SetupWizard({
         </div>
 
         <div className="mt-5 space-y-2.5">
-          <div className="flex items-center gap-2 text-xs font-semibold text-[#67E8F9]">
-            <Users className="h-4 w-4 text-[#67E8F9]" aria-hidden="true" />
+          <div className="flex items-center gap-2 text-xs font-semibold text-[#38BDF8]">
+            <Users className="h-4 w-4 text-[#38BDF8]" aria-hidden="true" />
             <span>{t(lang, 'samplePersonasLabel')}</span>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -263,12 +278,12 @@ export function SetupWizard({
                 key={persona.id}
                 type="button"
                 onClick={() => onSelectPersona(persona)}
-                className="flex min-h-[44px] flex-col items-start rounded-2xl border border-white/12 bg-[#0B0A16]/80 p-4 text-left transition-colors hover:border-[#67E8F9] hover:bg-[#14163F]"
+                className="flex min-h-[44px] flex-col items-start rounded-2xl border border-white/12 bg-[#0C1322]/80 p-4 text-left transition-colors hover:border-[#38BDF8] hover:bg-[#182947]"
               >
                 <span className="text-sm font-bold text-[#E6EDF7]">
                   {lang === 'hi' ? persona.labelHi : persona.labelEn}
                 </span>
-                <span className="mt-1 text-xs text-[#A7A3C7] leading-snug">
+                <span className="mt-1 text-xs text-[#9FB0C7] leading-snug">
                   {lang === 'hi' ? persona.descriptionHi : persona.descriptionEn}
                 </span>
               </button>
@@ -293,8 +308,8 @@ export function SetupWizard({
               aria-current={active ? 'step' : undefined}
               className={`min-h-[46px] rounded-2xl border px-3.5 py-2.5 text-left text-xs font-semibold transition-colors sm:text-sm ${
                 active
-                  ? 'border-[#67E8F9] bg-[#67E8F9] text-[#0B0A16]'
-                  : 'border-white/12 bg-[#0F0D22] text-[#E6EDF7] hover:bg-[#14163F]'
+                  ? 'border-[#38BDF8] bg-[#38BDF8] text-[#0C1322]'
+                  : 'border-white/12 bg-[#101A2C] text-[#E6EDF7] hover:bg-[#182947]'
               }`}
             >
               {s.label}
@@ -310,7 +325,7 @@ export function SetupWizard({
           return (
             <div className="space-y-6">
               {/* Visual Architectural Preview Banner */}
-              <div className="relative overflow-hidden rounded-2xl border border-white/12 bg-[#0B0A16]">
+              <div className="relative overflow-hidden rounded-2xl border border-white/12 bg-[#0C1322]">
                 <img
                   src={cityVisual.imageUrl}
                   alt={lang === 'hi' ? cityVisual.altHi : cityVisual.altEn}
@@ -319,11 +334,11 @@ export function SetupWizard({
                 />
                 <div
                   aria-hidden="true"
-                  className="absolute inset-0 bg-gradient-to-t from-[#06050E]/95 via-[#0B0A16]/45 to-transparent"
+                  className="absolute inset-0 bg-gradient-to-t from-[#070B12]/95 via-[#0C1322]/45 to-transparent"
                 />
                 <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-3 p-4 text-[#E6EDF7] sm:p-5">
                   <div>
-                    <p className="font-mono-tabular text-[11px] font-medium text-[#67E8F9]">
+                    <p className="font-mono-tabular text-[11px] font-medium text-[#38BDF8]">
                       {cityVisual.stationNetwork}
                     </p>
                     <p className="text-xl font-semibold tracking-tight font-display text-white">
@@ -337,9 +352,9 @@ export function SetupWizard({
                     type="button"
                     onClick={handleGeolocate}
                     disabled={isLocating}
-                    className="inline-flex min-h-[38px] items-center gap-2 rounded-xl bg-[#67E8F9] px-3.5 py-2 text-xs font-bold text-[#0B0A16] hover:bg-[#A5F3FC] disabled:opacity-60 whitespace-nowrap shrink-0"
+                    className="inline-flex min-h-[38px] items-center gap-2 rounded-xl bg-[#38BDF8] px-3.5 py-2 text-xs font-bold text-[#0C1322] hover:bg-[#7DD3FC] disabled:opacity-60 whitespace-nowrap shrink-0"
                   >
-                    <LocateFixed className="h-3.5 w-3.5 text-[#0B0A16]" aria-hidden="true" />
+                    <LocateFixed className="h-3.5 w-3.5 text-[#0C1322]" aria-hidden="true" />
                     <span>{isLocating ? t(lang, 'locating') : t(lang, 'useMyLocation')}</span>
                   </button>
                 </div>
@@ -349,7 +364,7 @@ export function SetupWizard({
                 <p
                   role="status"
                   aria-live="polite"
-                  className="rounded-xl border border-[#67E8F9]/25 bg-[#14163F] px-3.5 py-2.5 text-xs text-[#E6EDF7]"
+                  className="rounded-xl border border-[#38BDF8]/25 bg-[#182947] px-3.5 py-2.5 text-xs text-[#E6EDF7]"
                 >
                   {geoStatus}
                 </p>
@@ -364,7 +379,7 @@ export function SetupWizard({
                 </label>
                 <div className="relative">
                   <Search
-                    className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A7A3C7]"
+                    className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9FB0C7]"
                     aria-hidden="true"
                   />
                   <input
@@ -373,7 +388,7 @@ export function SetupWizard({
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder={t(lang, 'searchCityPlaceholder')}
-                    className="w-full min-h-[44px] rounded-xl border border-white/12 bg-[#0B0A16] pl-10 pr-10 text-sm text-[#E6EDF7] placeholder:text-[#A7A3C7]/70 focus:border-[#67E8F9] focus:bg-[#14122E] focus:outline-none"
+                    className="w-full min-h-[44px] rounded-xl border border-white/12 bg-[#0C1322] pl-10 pr-10 text-sm text-[#E6EDF7] placeholder:text-[#9FB0C7]/70 focus:border-[#38BDF8] focus:bg-[#142138] focus:outline-none"
                   />
                   {query ? (
                     <button
@@ -385,7 +400,7 @@ export function SetupWizard({
                         setSearchError(null);
                       }}
                       aria-label={lang === 'hi' ? 'खोज साफ़ करें' : 'Clear search input'}
-                      className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#A7A3C7] hover:bg-white/10 hover:text-white"
+                      className="absolute right-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#9FB0C7] hover:bg-white/10 hover:text-white"
                     >
                       <X className="h-4 w-4" aria-hidden="true" />
                     </button>
@@ -393,7 +408,7 @@ export function SetupWizard({
                 </div>
 
                 {isSearching ? (
-                  <p role="status" className="text-xs text-[#67E8F9]">
+                  <p role="status" className="text-xs text-[#38BDF8]">
                     {lang === 'hi' ? 'दुनिया भर के स्थान खोजे जा रहे हैं...' : 'Searching worldwide locations...'}
                   </p>
                 ) : null}
@@ -403,7 +418,7 @@ export function SetupWizard({
                   </p>
                 ) : null}
                 {!isSearching && !searchError && hasSearched && query.trim().length >= 2 && searchResults.length === 0 ? (
-                  <p role="status" className="rounded-xl border border-white/10 bg-[#0B0A16] px-3.5 py-2.5 text-xs text-[#A7A3C7]">
+                  <p role="status" className="rounded-xl border border-white/10 bg-[#0C1322] px-3.5 py-2.5 text-xs text-[#9FB0C7]">
                     {lang === 'hi'
                       ? `"${query.trim()}" के लिए कोई शहर नहीं मिला। कोई अन्य वर्तनी आज़माएं।`
                       : `No cities found for "${query.trim()}". Try another city or spelling.`}
@@ -412,7 +427,7 @@ export function SetupWizard({
                 {searchResults.length > 0 ? (
                   <ul
                     aria-label="Matching worldwide cities"
-                    className="divide-y divide-white/10 rounded-xl border border-white/12 bg-[#0B0A16]"
+                    className="divide-y divide-white/10 rounded-xl border border-white/12 bg-[#0C1322]"
                   >
                     {searchResults.map((city) => (
                       <li key={city.id}>
@@ -424,12 +439,12 @@ export function SetupWizard({
                             setSearchResults([]);
                             setHasSearched(false);
                           }}
-                          className="flex w-full min-h-[44px] items-center justify-between px-4 py-2 text-left text-sm hover:bg-[#14163F]"
+                          className="flex w-full min-h-[44px] items-center justify-between px-4 py-2 text-left text-sm hover:bg-[#182947]"
                         >
                           <span className="font-medium text-[#E6EDF7]">
-                            {city.name}, <span className="text-[#A7A3C7]">{city.state}</span>
+                            {city.name}, <span className="text-[#9FB0C7]">{city.state}</span>
                           </span>
-                          <span className="text-xs font-mono-tabular text-[#67E8F9]">
+                          <span className="text-xs font-mono-tabular text-[#38BDF8]">
                             {city.latitude.toFixed(2)}°, {city.longitude.toFixed(2)}°
                           </span>
                         </button>
@@ -441,7 +456,7 @@ export function SetupWizard({
 
               {/* Quick-Pick India & Global Cities */}
               <div className="space-y-3">
-                <p className="text-xs font-semibold text-[#A7A3C7]">{t(lang, 'quickPickTitle')}</p>
+                <p className="text-xs font-semibold text-[#9FB0C7]">{t(lang, 'quickPickTitle')}</p>
                 <div className="flex flex-wrap gap-2">
                   {QUICK_PICK_CITIES.map((city) => {
                     const selected = profile.location.id === city.id;
@@ -453,11 +468,11 @@ export function SetupWizard({
                         aria-pressed={selected}
                         className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border px-3.5 py-2 text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
                           selected
-                            ? 'border-[#67E8F9] bg-[#67E8F9] text-[#0B0A16]'
-                            : 'border-white/12 bg-[#0B0A16]/85 text-[#E6EDF7] hover:border-[#67E8F9]/60 hover:bg-[#14163F]'
+                            ? 'border-[#38BDF8] bg-[#38BDF8] text-[#0C1322]'
+                            : 'border-white/12 bg-[#0C1322]/85 text-[#E6EDF7] hover:border-[#38BDF8]/60 hover:bg-[#182947]'
                         }`}
                       >
-                        {selected ? <Check className="h-3.5 w-3.5 text-[#0B0A16]" aria-hidden="true" /> : null}
+                        {selected ? <Check className="h-3.5 w-3.5 text-[#0C1322]" aria-hidden="true" /> : null}
                         <span>{city.name}</span>
                       </button>
                     );
@@ -475,11 +490,11 @@ export function SetupWizard({
                         aria-pressed={selected}
                         className={`inline-flex min-h-[38px] items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
                           selected
-                            ? 'border-[#67E8F9] bg-[#67E8F9] text-[#0B0A16]'
-                            : 'border-white/12 bg-[#0F0D22] text-[#E6EDF7] hover:border-[#67E8F9]/60 hover:bg-[#14163F]'
+                            ? 'border-[#38BDF8] bg-[#38BDF8] text-[#0C1322]'
+                            : 'border-white/12 bg-[#101A2C] text-[#E6EDF7] hover:border-[#38BDF8]/60 hover:bg-[#182947]'
                         }`}
                       >
-                        {selected ? <Check className="h-3.5 w-3.5 text-[#0B0A16]" aria-hidden="true" /> : null}
+                        {selected ? <Check className="h-3.5 w-3.5 text-[#0C1322]" aria-hidden="true" /> : null}
                         <span>{city.name}</span>
                       </button>
                     );
@@ -493,9 +508,9 @@ export function SetupWizard({
                   type="button"
                   onClick={() => setShowMapPicker((prev) => !prev)}
                   aria-expanded={showMapPicker}
-                  className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-white/12 bg-[#0B0A16] px-3.5 py-2 text-xs font-semibold text-[#E6EDF7] hover:border-[#67E8F9]/60 hover:bg-[#14163F]"
+                  className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-white/12 bg-[#0C1322] px-3.5 py-2 text-xs font-semibold text-[#E6EDF7] hover:border-[#38BDF8]/60 hover:bg-[#182947]"
                 >
-                  <Globe2 className="h-4 w-4 text-[#67E8F9]" aria-hidden="true" />
+                  <Globe2 className="h-4 w-4 text-[#38BDF8]" aria-hidden="true" />
                   <span>
                     {showMapPicker
                       ? lang === 'hi'
@@ -519,7 +534,7 @@ export function SetupWizard({
 
               {/* Direct Grouped Dropdown */}
               <div className="space-y-2 border-t border-white/10 pt-4">
-                <label htmlFor="all-monitored-select" className="block text-xs font-semibold text-[#A7A3C7]">
+                <label htmlFor="all-monitored-select" className="block text-xs font-semibold text-[#9FB0C7]">
                   {lang === 'hi'
                     ? `या सभी ${ALL_MONITORED_CITIES.length} भारत व वैश्विक AQI-निगरानी शहरों में से चुनें`
                     : `Or choose directly from all ${ALL_MONITORED_CITIES.length} AQI-monitored India & global cities`}
@@ -531,7 +546,7 @@ export function SetupWizard({
                     const found = ALL_MONITORED_CITIES.find((c) => c.id === e.target.value);
                     if (found) onChangeProfile({ ...profile, location: found });
                   }}
-                  className="w-full min-h-[42px] rounded-xl border border-white/12 bg-[#0B0A16] px-3 text-sm text-[#E6EDF7] focus:border-[#67E8F9] focus:outline-none"
+                  className="w-full min-h-[42px] rounded-xl border border-white/12 bg-[#0C1322] px-3 text-sm text-[#E6EDF7] focus:border-[#38BDF8] focus:outline-none"
                 >
                   <option value="" disabled>
                     {lang === 'hi' ? 'शहर चुनें...' : 'Select any monitored city...'}
@@ -570,8 +585,8 @@ export function SetupWizard({
                       key={item.key}
                       className={`flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-2.5 text-sm transition-colors ${
                         checked
-                          ? 'border-[#67E8F9] bg-[#14163F] text-[#E6EDF7]'
-                          : 'border-white/12 bg-[#0B0A16]/85 text-[#A7A3C7] hover:bg-[#14122E]'
+                          ? 'border-[#38BDF8] bg-[#182947] text-[#E6EDF7]'
+                          : 'border-white/12 bg-[#0C1322]/85 text-[#9FB0C7] hover:bg-[#142138]'
                       }`}
                     >
                       <input
@@ -583,7 +598,7 @@ export function SetupWizard({
                             members: { ...profile.members, [item.key]: e.target.checked },
                           })
                         }
-                        className="h-4 w-4 rounded border-white/25 accent-[#67E8F9]"
+                        className="h-4 w-4 rounded border-white/25 accent-[#38BDF8]"
                       />
                       <span className="font-medium text-[#E6EDF7]">{t(lang, item.labelKey)}</span>
                     </label>
@@ -603,7 +618,7 @@ export function SetupWizard({
                   onChange={(e) =>
                     onChangeProfile({ ...profile, homeType: e.target.value as HomeType })
                   }
-                  className="w-full min-h-[44px] rounded-xl border border-white/12 bg-[#0B0A16] px-3 text-sm text-[#E6EDF7] focus:border-[#67E8F9] focus:outline-none"
+                  className="w-full min-h-[44px] rounded-xl border border-white/12 bg-[#0C1322] px-3 text-sm text-[#E6EDF7] focus:border-[#38BDF8] focus:outline-none"
                 >
                   {homeTypes.map((ht) => (
                     <option key={ht.value} value={ht.value}>
@@ -623,7 +638,7 @@ export function SetupWizard({
                   onChange={(e) =>
                     onChangeProfile({ ...profile, budget: e.target.value as BudgetTier })
                   }
-                  className="w-full min-h-[44px] rounded-xl border border-white/12 bg-[#0B0A16] px-3 text-sm text-[#E6EDF7] focus:border-[#67E8F9] focus:outline-none"
+                  className="w-full min-h-[44px] rounded-xl border border-white/12 bg-[#0C1322] px-3 text-sm text-[#E6EDF7] focus:border-[#38BDF8] focus:outline-none"
                 >
                   {budgets.map((b) => (
                     <option key={b.value} value={b.value}>
@@ -635,32 +650,32 @@ export function SetupWizard({
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border border-white/12 bg-[#0B0A16]/85 px-3.5 py-2.5 text-sm hover:bg-[#14163F]">
+              <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border border-white/12 bg-[#0C1322]/85 px-3.5 py-2.5 text-sm hover:bg-[#182947]">
                 <input
                   type="checkbox"
                   checked={profile.hasAirPurifier}
                   onChange={(e) =>
                     onChangeProfile({ ...profile, hasAirPurifier: e.target.checked })
                   }
-                  className="h-4 w-4 rounded border-white/25 accent-[#67E8F9]"
+                  className="h-4 w-4 rounded border-white/25 accent-[#38BDF8]"
                 />
                 <span className="font-medium text-[#E6EDF7]">{t(lang, 'hasPurifierLabel')}</span>
               </label>
 
-              <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border border-white/12 bg-[#0B0A16]/85 px-3.5 py-2.5 text-sm hover:bg-[#14163F]">
+              <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border border-white/12 bg-[#0C1322]/85 px-3.5 py-2.5 text-sm hover:bg-[#182947]">
                 <input
                   type="checkbox"
                   checked={profile.hasIndoorPlants}
                   onChange={(e) =>
                     onChangeProfile({ ...profile, hasIndoorPlants: e.target.checked })
                   }
-                  className="h-4 w-4 rounded border-white/25 accent-[#67E8F9]"
+                  className="h-4 w-4 rounded border-white/25 accent-[#38BDF8]"
                 />
                 <span className="font-medium text-[#E6EDF7]">{t(lang, 'hasPlantsLabel')}</span>
               </label>
 
               <div className="space-y-1">
-                <label htmlFor="room-size-input" className="block text-xs font-semibold text-[#A7A3C7]">
+                <label htmlFor="room-size-input" className="block text-xs font-semibold text-[#9FB0C7]">
                   {t(lang, 'roomSizeLabel')}
                 </label>
                 <input
@@ -676,7 +691,7 @@ export function SetupWizard({
                       roomSizeSqFt: Math.max(60, Number(e.target.value) || 180),
                     })
                   }
-                  className="w-full min-h-[40px] rounded-xl border border-white/12 bg-[#0B0A16] px-3 text-sm font-mono-tabular text-[#E6EDF7] focus:border-[#67E8F9] focus:outline-none"
+                  className="w-full min-h-[40px] rounded-xl border border-white/12 bg-[#0C1322] px-3 text-sm font-mono-tabular text-[#E6EDF7] focus:border-[#38BDF8] focus:outline-none"
                 />
               </div>
             </div>
@@ -700,8 +715,8 @@ export function SetupWizard({
                       aria-pressed={selected}
                       className={`min-h-[44px] rounded-xl border px-3.5 py-2.5 text-sm font-medium transition-colors ${
                         selected
-                          ? 'border-[#67E8F9] bg-[#67E8F9] text-[#0B0A16]'
-                          : 'border-white/12 bg-[#0B0A16] text-[#E6EDF7] hover:border-[#67E8F9]/60 hover:bg-[#14163F]'
+                          ? 'border-[#38BDF8] bg-[#38BDF8] text-[#0C1322]'
+                          : 'border-white/12 bg-[#0C1322] text-[#E6EDF7] hover:border-[#38BDF8]/60 hover:bg-[#182947]'
                       }`}
                     >
                       {t(lang, mode.labelKey)}
@@ -722,7 +737,7 @@ export function SetupWizard({
                   onChange={(e) =>
                     onChangeProfile({ ...profile, morningLeaveHour: Number(e.target.value) })
                   }
-                  className="w-full min-h-[44px] rounded-xl border border-white/12 bg-[#0B0A16] px-3 text-sm font-mono-tabular text-[#E6EDF7] focus:border-[#67E8F9] focus:outline-none"
+                  className="w-full min-h-[44px] rounded-xl border border-white/12 bg-[#0C1322] px-3 text-sm font-mono-tabular text-[#E6EDF7] focus:border-[#38BDF8] focus:outline-none"
                 >
                   {[5, 6, 7, 8, 9, 10, 11, 12].map((h) => (
                     <option key={h} value={h}>
@@ -742,7 +757,7 @@ export function SetupWizard({
                   onChange={(e) =>
                     onChangeProfile({ ...profile, eveningReturnHour: Number(e.target.value) })
                   }
-                  className="w-full min-h-[44px] rounded-xl border border-white/12 bg-[#0B0A16] px-3 text-sm font-mono-tabular text-[#E6EDF7] focus:border-[#67E8F9] focus:outline-none"
+                  className="w-full min-h-[44px] rounded-xl border border-white/12 bg-[#0C1322] px-3 text-sm font-mono-tabular text-[#E6EDF7] focus:border-[#38BDF8] focus:outline-none"
                 >
                   {[14, 15, 16, 17, 18, 19, 20, 21, 22].map((h) => (
                     <option key={h} value={h}>
@@ -768,7 +783,7 @@ export function SetupWizard({
                       oneWayDistanceKm: Math.max(0, Number(e.target.value) || 0),
                     })
                   }
-                  className="w-full min-h-[44px] rounded-xl border border-white/12 bg-[#0B0A16] px-3 text-sm font-mono-tabular text-[#E6EDF7] focus:border-[#67E8F9] focus:outline-none"
+                  className="w-full min-h-[44px] rounded-xl border border-white/12 bg-[#0C1322] px-3 text-sm font-mono-tabular text-[#E6EDF7] focus:border-[#38BDF8] focus:outline-none"
                 />
               </div>
             </div>
@@ -781,7 +796,7 @@ export function SetupWizard({
             <button
               type="button"
               onClick={() => setStep((prev) => (prev === 3 ? 2 : 1))}
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-white/12 bg-[#0B0A16] px-4 py-2 text-sm font-semibold text-[#E6EDF7] hover:bg-[#14163F]"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-white/12 bg-[#0C1322] px-4 py-2 text-sm font-semibold text-[#E6EDF7] hover:bg-[#182947]"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               <span>{t(lang, 'stepBack')}</span>
@@ -794,19 +809,19 @@ export function SetupWizard({
             <button
               type="button"
               onClick={() => setStep((prev) => (prev === 1 ? 2 : 3))}
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#67E8F9] px-5 py-2 text-sm font-bold text-[#0B0A16] hover:bg-[#A5F3FC]"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#38BDF8] px-5 py-2 text-sm font-bold text-[#0C1322] hover:bg-[#7DD3FC]"
             >
               <span>{t(lang, 'stepNext')}</span>
-              <ArrowRight className="h-4 w-4 text-[#0B0A16]" aria-hidden="true" />
+              <ArrowRight className="h-4 w-4 text-[#0C1322]" aria-hidden="true" />
             </button>
           ) : (
             <button
               type="button"
               onClick={onComplete}
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#67E8F9] px-5 py-2.5 text-sm font-bold text-[#0B0A16] hover:bg-[#A5F3FC]"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#38BDF8] px-5 py-2.5 text-sm font-bold text-[#0C1322] hover:bg-[#7DD3FC]"
             >
               <span>{t(lang, 'stepFinish')}</span>
-              <ArrowRight className="h-4 w-4 text-[#0B0A16]" aria-hidden="true" />
+              <ArrowRight className="h-4 w-4 text-[#0C1322]" aria-hidden="true" />
             </button>
           )}
         </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BarChart3, Table2 } from 'lucide-react';
 import { estimateCpcbFromPm, CPCB_CATEGORY_STYLES } from '../lib/cpcb';
 import { t } from '../lib/i18n';
@@ -20,6 +20,11 @@ export default function HourlyForecastChart({
   const [showTable, setShowTable] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number>(0);
 
+  const firstTimeIso = hourly24[0]?.timeIso;
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [firstTimeIso]);
+
   if (hourly24.length === 0) {
     return null;
   }
@@ -40,7 +45,7 @@ export default function HourlyForecastChart({
           <h3 className="text-base font-semibold text-[#E6EDF7]">
             {t(lang, 'hourlyChartTitle')}
           </h3>
-          <p className="mt-0.5 text-xs text-[#A7A3C7]">
+          <p className="mt-0.5 text-xs text-[#9FB0C7]">
             {lang === 'hi'
               ? 'दिन का सबसे साफ (हरा फ्रेम) और सबसे खराब (लाल फ्रेम) समय हाइलाइट किया गया है।'
               : 'Highlights the cleanest 2-hour window (emerald frame) and worst 2-hour window (coral frame).'}
@@ -50,16 +55,16 @@ export default function HourlyForecastChart({
         <button
           type="button"
           onClick={() => setShowTable((prev) => !prev)}
-          className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-white/12 bg-[#0B0A16] px-3.5 py-2 text-xs font-semibold text-[#E6EDF7] hover:bg-[#14163F] whitespace-nowrap shrink-0"
+          className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-white/12 bg-[#0C1322] px-3.5 py-2 text-xs font-semibold text-[#E6EDF7] hover:bg-[#182947] whitespace-nowrap shrink-0"
         >
           {showTable ? (
             <>
-              <BarChart3 className="h-4 w-4 text-[#67E8F9]" aria-hidden="true" />
+              <BarChart3 className="h-4 w-4 text-[#38BDF8]" aria-hidden="true" />
               <span>{t(lang, 'showChartView')}</span>
             </>
           ) : (
             <>
-              <Table2 className="h-4 w-4 text-[#67E8F9]" aria-hidden="true" />
+              <Table2 className="h-4 w-4 text-[#38BDF8]" aria-hidden="true" />
               <span>{t(lang, 'showTableView')}</span>
             </>
           )}
@@ -71,10 +76,10 @@ export default function HourlyForecastChart({
           {/* Interactive focused hour readout */}
           <div
             aria-live="polite"
-            className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/12 bg-[#0B0A16]/85 px-3.5 py-2.5 text-xs"
+            className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/12 bg-[#0C1322]/85 px-3.5 py-2.5 text-xs"
           >
             <div className="flex flex-wrap items-center gap-2 text-[#E6EDF7]">
-              <span className="font-semibold font-mono-tabular text-[#67E8F9]">{selected.hourLabel}</span>
+              <span className="font-semibold font-mono-tabular text-[#38BDF8]">{selected.hourLabel}</span>
               <span aria-hidden="true">·</span>
               <span className="font-mono-tabular">
                 PM2.5: <strong>{selected.pm25} µg/m³</strong>
@@ -84,9 +89,9 @@ export default function HourlyForecastChart({
                 US AQI: <strong>{selected.usAqi}</strong>
               </span>
               <span aria-hidden="true">·</span>
-              <span className="text-[#A7A3C7]">{lang === 'hi' ? selectedCpcb.labelHi : selectedCpcb.labelEn}</span>
+              <span className="text-[#9FB0C7]">{lang === 'hi' ? selectedCpcb.labelHi : selectedCpcb.labelEn}</span>
             </div>
-            <div className="text-[#A7A3C7] font-mono-tabular">
+            <div className="text-[#9FB0C7] font-mono-tabular">
               {selected.temperatureC !== null ? `${selected.temperatureC}°C` : ''}
               {selected.windSpeedKmh !== null ? ` · ${selected.windSpeedKmh} km/h wind` : ''}
             </div>
@@ -120,11 +125,11 @@ export default function HourlyForecastChart({
                         : worst
                         ? 'ring-2 ring-rose-400 bg-rose-500/15'
                         : isSelected
-                        ? 'bg-[#14163F]'
-                        : 'hover:bg-[#14122E]'
+                        ? 'bg-[#182947]'
+                        : 'hover:bg-[#142138]'
                     }`}
                   >
-                    <span className="mb-1 text-[10px] font-mono-tabular text-[#A7A3C7]">
+                    <span className="mb-1 text-[10px] font-mono-tabular text-[#9FB0C7]">
                       {Math.round(point.pm25)}
                     </span>
                     <div className="flex w-full flex-1 items-end justify-center">
@@ -135,7 +140,7 @@ export default function HourlyForecastChart({
                         style={{ height: `${heightPct}%` }}
                       />
                     </div>
-                    <span className="mt-1.5 text-[10px] font-mono-tabular text-[#A7A3C7] whitespace-nowrap">
+                    <span className="mt-1.5 text-[10px] font-mono-tabular text-[#9FB0C7] whitespace-nowrap">
                       {idx % 3 === 0 || clean || worst ? point.hourLabel.replace(' ', '') : ''}
                     </span>
                   </button>
@@ -144,7 +149,7 @@ export default function HourlyForecastChart({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-5 text-xs text-[#A7A3C7]">
+          <div className="flex flex-wrap items-center gap-5 text-xs text-[#9FB0C7]">
             <span className="inline-flex items-center gap-1.5">
               <span className="inline-block h-3 w-3 rounded-sm border-2 border-[#5DCAA5] bg-[#1D9E75]/20" aria-hidden="true" />
               <span>
@@ -168,7 +173,7 @@ export default function HourlyForecastChart({
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-white/12">
           <table className="min-w-full divide-y divide-white/10 text-left text-xs">
-            <thead className="bg-[#0B0A16] text-[#A7A3C7]">
+            <thead className="bg-[#0C1322] text-[#9FB0C7]">
               <tr>
                 <th scope="col" className="px-3.5 py-2.5 font-semibold">Hour</th>
                 <th scope="col" className="px-3.5 py-2.5 font-semibold text-right">PM2.5 (µg/m³)</th>
@@ -178,29 +183,29 @@ export default function HourlyForecastChart({
                 <th scope="col" className="px-3.5 py-2.5 font-semibold">Window</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/10 bg-[#0F0D22]">
+            <tbody className="divide-y divide-white/10 bg-[#101A2C]">
               {hourly24.map((point) => {
                 const cpcb = estimateCpcbFromPm(point.pm25, point.pm10);
                 const clean = isCleanHour(point.timeIso);
                 const worst = isWorstHour(point.timeIso);
                 return (
-                  <tr key={point.timeIso} className="hover:bg-[#14163F]/70">
+                  <tr key={point.timeIso} className="hover:bg-[#182947]/70">
                     <td className="px-3.5 py-2 font-medium font-mono-tabular text-[#E6EDF7]">
                       {point.hourLabel}
                     </td>
                     <td className="px-3.5 py-2 text-right font-mono-tabular text-[#E6EDF7]">
                       {point.pm25}
                     </td>
-                    <td className="px-3.5 py-2 text-right font-mono-tabular text-[#A7A3C7]">
+                    <td className="px-3.5 py-2 text-right font-mono-tabular text-[#9FB0C7]">
                       {point.pm10 !== null ? point.pm10 : '—'}
                     </td>
-                    <td className="px-3.5 py-2 text-right font-mono-tabular font-semibold text-[#67E8F9]">
+                    <td className="px-3.5 py-2 text-right font-mono-tabular font-semibold text-[#38BDF8]">
                       {point.usAqi}
                     </td>
-                    <td className="px-3.5 py-2 text-[#A7A3C7]">
+                    <td className="px-3.5 py-2 text-[#9FB0C7]">
                       {lang === 'hi' ? cpcb.labelHi : cpcb.labelEn}
                     </td>
-                    <td className="px-3.5 py-2 text-[#A7A3C7]">
+                    <td className="px-3.5 py-2 text-[#9FB0C7]">
                       {clean ? 'Cleanest' : worst ? 'Worst' : '—'}
                     </td>
                   </tr>

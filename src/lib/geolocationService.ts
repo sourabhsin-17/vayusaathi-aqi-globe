@@ -297,6 +297,13 @@ export async function requestHealthNotificationPermission(): Promise<
   }
 }
 
+export function hasSentHealthNotification(
+  locationId: string,
+  severity: HealthWarningSeverity
+): boolean {
+  return sentNotificationKeys.has(`${locationId}_${severity}`);
+}
+
 export function sendBrowserHealthNotification(
   warning: HealthWarningEvaluation,
   location: IndianLocation,

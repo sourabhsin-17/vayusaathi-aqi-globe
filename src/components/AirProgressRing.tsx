@@ -13,7 +13,7 @@ interface AirProgressRingProps {
 function getRingStrokeHex(usAqi: number, theme: 'dark' | 'light'): string {
   if (theme === 'dark') {
     if (usAqi <= 50) return '#5DCAA5'; // Seafoam Emerald
-    if (usAqi <= 100) return '#67E8F9'; // Cosmic Ice Cyan
+    if (usAqi <= 100) return '#38BDF8'; // Cosmic Ice Cyan
     if (usAqi <= 150) return '#FBBF24'; // Warm Solar Amber
     if (usAqi <= 200) return '#FB7185'; // Electric Coral
     return '#FCA5A5'; // High-alert Rose
@@ -42,6 +42,8 @@ export function AirProgressRing({
 
   const strokeColor = getRingStrokeHex(safeAqi, theme);
   const trackColor = theme === 'dark' ? 'rgba(230, 237, 247, 0.14)' : '#E5E3DA';
+
+  const isCompact = size <= 100;
 
   return (
     <div
@@ -85,23 +87,23 @@ export function AirProgressRing({
 
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-2">
         <span
-          className={`text-[10px] font-semibold uppercase tracking-wider ${
-            theme === 'dark' ? 'text-[#A7A3C7]' : 'text-stone-500'
+          className={`${isCompact ? 'text-[8px]' : 'text-[10px]'} font-semibold uppercase tracking-wider ${
+            theme === 'dark' ? 'text-[#9FB0C7]' : 'text-stone-500'
           }`}
         >
           US AQI
         </span>
         <span
-          className={`font-mono-tabular text-3xl font-extrabold leading-none tracking-tight ${
-            theme === 'dark' ? 'text-[#E6EDF7]' : 'text-[#14163F]'
+          className={`font-mono-tabular ${isCompact ? 'text-xl' : 'text-3xl'} font-extrabold leading-none tracking-tight ${
+            theme === 'dark' ? 'text-[#E6EDF7]' : 'text-[#182947]'
           }`}
         >
           {safeAqi}
         </span>
         {sublabel ? (
           <span
-            className={`mt-1 max-w-[84%] truncate text-[10px] font-medium ${
-              theme === 'dark' ? 'text-[#67E8F9]' : 'text-[#14163F]'
+            className={`${isCompact ? 'mt-0.5 text-[8px]' : 'mt-1 text-[10px]'} max-w-[82%] truncate font-medium ${
+              theme === 'dark' ? 'text-[#38BDF8]' : 'text-[#182947]'
             }`}
           >
             {sublabel}

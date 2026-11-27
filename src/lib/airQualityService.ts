@@ -615,13 +615,28 @@ export async function fetchLiveAirAndWeather(
     whoPm25Ratio,
     current: currentReadings,
     weather: {
-      temperatureC: Number((wx.current.temperature_2m ?? 0).toFixed(1)),
+      temperatureC:
+        wx.current.temperature_2m !== null && wx.current.temperature_2m !== undefined
+          ? Number(wx.current.temperature_2m.toFixed(1))
+          : hourly48[0]?.temperatureC !== null && hourly48[0]?.temperatureC !== undefined
+          ? Number(hourly48[0].temperatureC.toFixed(1))
+          : null,
       apparentTemperatureC:
         wx.current.apparent_temperature !== undefined && wx.current.apparent_temperature !== null
           ? Number(wx.current.apparent_temperature.toFixed(1))
           : null,
-      humidityPct: Math.round(wx.current.relative_humidity_2m ?? 0),
-      windSpeedKmh: Number((wx.current.wind_speed_10m ?? 0).toFixed(1)),
+      humidityPct:
+        wx.current.relative_humidity_2m !== null && wx.current.relative_humidity_2m !== undefined
+          ? Math.round(wx.current.relative_humidity_2m)
+          : hourly48[0]?.humidityPct !== null && hourly48[0]?.humidityPct !== undefined
+          ? Math.round(hourly48[0].humidityPct)
+          : null,
+      windSpeedKmh:
+        wx.current.wind_speed_10m !== null && wx.current.wind_speed_10m !== undefined
+          ? Number(wx.current.wind_speed_10m.toFixed(1))
+          : hourly48[0]?.windSpeedKmh !== null && hourly48[0]?.windSpeedKmh !== undefined
+          ? Number(hourly48[0].windSpeedKmh.toFixed(1))
+          : null,
       windGustsKmh:
         wx.current.wind_gusts_10m !== undefined && wx.current.wind_gusts_10m !== null
           ? Number(wx.current.wind_gusts_10m.toFixed(1))

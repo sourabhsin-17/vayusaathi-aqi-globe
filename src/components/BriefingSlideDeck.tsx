@@ -71,7 +71,7 @@ export function BriefingSlideDeck({
 
   const currentSlide = slides[activeSlideIdx] ?? slides[0];
   const usLabel = getUsAqiLabel(snapshot.current.usAqi);
-  const cpcbAccent = CPCB_CATEGORY_STYLES[snapshot.cpcb.categoryKey]?.accentHex ?? '#67E8F9';
+  const cpcbAccent = CPCB_CATEGORY_STYLES[snapshot.cpcb.categoryKey]?.accentHex ?? '#38BDF8';
   const whoMultiple =
     snapshot.whoPm25Ratio ?? Number((snapshot.current.pm25 / 15).toFixed(1));
   const freshness = formatFreshnessLabel(snapshot.fetchedAtIso, lang);
@@ -163,21 +163,21 @@ export function BriefingSlideDeck({
         }
       }}
       aria-label={isHi ? 'इंटरैक्टिव दैनिक ब्रीफिंग स्टूडियो' : 'Interactive Air Briefing Studio'}
-      className="obsidian-surface rounded-3xl overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[#67E8F9]"
+      className="obsidian-surface rounded-3xl overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[#38BDF8]"
     >
       {/* Top Progress Hairline */}
       <div className="h-[3px] w-full bg-white/10" aria-hidden="true">
         <motion.div
           animate={{ width: `${((activeSlideIdx + 1) / slides.length) * 100}%` }}
           transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-          className="h-full bg-gradient-to-r from-[#67E8F9] via-[#5DCAA5] to-[#A78BFA]"
+          className="h-full bg-gradient-to-r from-[#38BDF8] via-[#5DCAA5] to-[#A78BFA]"
         />
       </div>
 
       {/* Top Deck Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#0B0A16]/90 px-5 py-3.5 sm:px-7">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#0C1322]/90 px-5 py-3.5 sm:px-7">
         <div className="flex flex-wrap items-center gap-3">
-          <span className="font-mono-tabular text-xs font-semibold text-[#67E8F9]">
+          <span className="font-mono-tabular text-xs font-semibold text-[#38BDF8]">
             {currentSlide.num} / 0{slides.length}
           </span>
           <h2 className="text-base font-semibold tracking-tight text-[#E6EDF7] sm:text-lg">
@@ -202,11 +202,11 @@ export function BriefingSlideDeck({
                 onClick={() => selectSlide(idx)}
                 className={`inline-flex min-h-[34px] items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all whitespace-nowrap shrink-0 ${
                   active
-                    ? 'border-[#67E8F9] bg-[#67E8F9] text-[#0B0A16] shadow-[0_0_18px_-4px_rgba(103,232,249,0.6)]'
-                    : 'border-white/12 bg-[#0F0D22] text-[#E6EDF7] hover:bg-[#14163F]'
+                    ? 'border-[#38BDF8] bg-[#38BDF8] text-[#0C1322] shadow-[0_0_18px_-4px_rgba(103,232,249,0.6)]'
+                    : 'border-white/12 bg-[#101A2C] text-[#E6EDF7] hover:bg-[#182947]'
                 }`}
               >
-                <span className={`font-mono-tabular ${active ? 'text-[#0B0A16]/80' : 'text-[#67E8F9]'}`}>
+                <span className={`font-mono-tabular ${active ? 'text-[#0C1322]/80' : 'text-[#38BDF8]'}`}>
                   {s.num}
                 </span>
                 <span>{isHi ? s.titleHi : s.titleEn}</span>
@@ -221,7 +221,7 @@ export function BriefingSlideDeck({
             type="button"
             onClick={goPrev}
             aria-label={isHi ? 'पिछली स्लाइड' : 'Previous briefing slide'}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/12 bg-[#0F0D22] text-[#E6EDF7] hover:bg-[#14163F]"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/12 bg-[#101A2C] text-[#E6EDF7] hover:bg-[#182947]"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -229,7 +229,7 @@ export function BriefingSlideDeck({
             type="button"
             onClick={goNext}
             aria-label={isHi ? 'अगली स्लाइड' : 'Next briefing slide'}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/12 bg-[#0F0D22] text-[#E6EDF7] hover:bg-[#14163F]"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/12 bg-[#101A2C] text-[#E6EDF7] hover:bg-[#182947]"
           >
             <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -237,7 +237,7 @@ export function BriefingSlideDeck({
             type="button"
             onClick={() => setExpandedDeck((p) => !p)}
             aria-label={expandedDeck ? 'Compact briefing height' : 'Expand briefing height'}
-            className="hidden sm:inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/12 bg-[#0F0D22] text-[#E6EDF7] hover:bg-[#14163F]"
+            className="hidden sm:inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/12 bg-[#101A2C] text-[#E6EDF7] hover:bg-[#182947]"
           >
             {expandedDeck ? (
               <Minimize2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -263,7 +263,7 @@ export function BriefingSlideDeck({
             >
               {/* Left Glowing Indigo Stage */}
               <div
-                className="relative flex flex-col justify-between gap-5 overflow-hidden bg-[#14163F] p-6 text-[#E6EDF7] sm:p-8 lg:col-span-5 lg:border-r lg:border-white/10"
+                className="relative flex flex-col justify-between gap-5 overflow-hidden bg-[#182947] p-6 text-[#E6EDF7] sm:p-8 lg:col-span-5 lg:border-r lg:border-white/10"
                 style={{
                   backgroundImage: `radial-gradient(380px circle at 88% 18%, ${cpcbAccent}22, transparent 62%)`,
                 }}
@@ -276,7 +276,7 @@ export function BriefingSlideDeck({
                     <h3 className="font-display text-2xl font-semibold tracking-tight text-white">
                       {snapshot.location.name}
                     </h3>
-                    <p className="text-xs text-[#A7A3C7]">{snapshot.location.state}</p>
+                    <p className="text-xs text-[#9FB0C7]">{snapshot.location.state}</p>
                   </div>
 
                   <AirProgressRing
@@ -293,15 +293,15 @@ export function BriefingSlideDeck({
                 {/* Live vs Best Window Switch */}
                 <div className="space-y-2.5 border-t border-white/12 pt-4">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-medium text-[#A7A3C7]">
+                    <span className="text-[11px] font-medium text-[#9FB0C7]">
                       {isHi ? 'व्यू:' : 'Focus:'}
                     </span>
-                    <div className="inline-flex rounded-lg border border-white/15 bg-[#0B0A16] p-0.5 text-[11px]">
+                    <div className="inline-flex rounded-lg border border-white/15 bg-[#0C1322] p-0.5 text-[11px]">
                       <button
                         type="button"
                         onClick={() => setCompareCleanWindow(false)}
                         className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${
-                          !compareCleanWindow ? 'bg-[#67E8F9] text-[#0B0A16]' : 'text-[#A7A3C7] hover:text-white'
+                          !compareCleanWindow ? 'bg-[#38BDF8] text-[#0C1322]' : 'text-[#9FB0C7] hover:text-white'
                         }`}
                       >
                         {isHi ? 'अभी' : 'Now'}
@@ -310,7 +310,7 @@ export function BriefingSlideDeck({
                         type="button"
                         onClick={() => setCompareCleanWindow(true)}
                         className={`rounded-md px-2.5 py-1 font-semibold transition-colors ${
-                          compareCleanWindow ? 'bg-[#67E8F9] text-[#0B0A16]' : 'text-[#A7A3C7] hover:text-white'
+                          compareCleanWindow ? 'bg-[#38BDF8] text-[#0C1322]' : 'text-[#9FB0C7] hover:text-white'
                         }`}
                       >
                         {isHi ? 'सर्वोत्तम समय' : 'Best Window'}
@@ -320,21 +320,21 @@ export function BriefingSlideDeck({
 
                   <div className="grid grid-cols-3 gap-3 font-mono-tabular text-xs">
                     <div>
-                      <span className="block text-[#A7A3C7]">PM2.5</span>
+                      <span className="block text-[#9FB0C7]">PM2.5</span>
                       <strong className="text-base font-bold text-white">
                         {compareCleanWindow ? snapshot.cleanestWindow.avgPm25 : snapshot.current.pm25} µg/m³
                       </strong>
                     </div>
                     <div>
-                      <span className="block text-[#A7A3C7]">
+                      <span className="block text-[#9FB0C7]">
                         {compareCleanWindow ? (isHi ? 'समय' : 'Hours') : 'WHO 24h'}
                       </span>
-                      <strong className="text-base font-bold text-[#67E8F9]">
+                      <strong className="text-base font-bold text-[#38BDF8]">
                         {compareCleanWindow ? snapshot.cleanestWindow.startLabel : `${whoMultiple}×`}
                       </strong>
                     </div>
                     <div>
-                      <span className="block text-[#A7A3C7]">
+                      <span className="block text-[#9FB0C7]">
                         {isHi ? 'प्रमुख' : 'Driver'}
                       </span>
                       <strong className="text-base font-bold text-white">
@@ -346,19 +346,19 @@ export function BriefingSlideDeck({
               </div>
 
               {/* Right Visual Benchmark Meter & Crisp Summary */}
-              <div className="flex flex-col justify-between gap-5 bg-[#0F0D22] p-6 sm:p-8 lg:col-span-7">
+              <div className="flex flex-col justify-between gap-5 bg-[#101A2C] p-6 sm:p-8 lg:col-span-7">
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-mono-tabular text-xs font-semibold uppercase tracking-wider text-[#67E8F9]">
+                    <p className="font-mono-tabular text-xs font-semibold uppercase tracking-wider text-[#38BDF8]">
                       01 · {isHi ? 'सारांश और मानक ग्राफ' : 'Summary & Benchmark'}
                     </p>
                     <button
                       type="button"
                       onClick={() => setShowHotspotFact((v) => !v)}
                       aria-expanded={showHotspotFact}
-                      className="inline-flex min-h-[28px] items-center gap-1 rounded-md border border-white/12 bg-[#0B0A16] px-2.5 py-0.5 text-[11px] font-semibold text-[#67E8F9] hover:bg-[#14163F] whitespace-nowrap"
+                      className="inline-flex min-h-[28px] items-center gap-1 rounded-md border border-white/12 bg-[#0C1322] px-2.5 py-0.5 text-[11px] font-semibold text-[#38BDF8] hover:bg-[#182947] whitespace-nowrap"
                     >
-                      <Info className="h-3 w-3 text-[#67E8F9]" aria-hidden="true" />
+                      <Info className="h-3 w-3 text-[#38BDF8]" aria-hidden="true" />
                       <span>{showHotspotFact ? (isHi ? 'बंद' : 'Hide') : 'WHO vs CPCB'}</span>
                     </button>
                   </div>
@@ -370,17 +370,17 @@ export function BriefingSlideDeck({
                   </p>
 
                   {/* Visual Animated Benchmark Bars */}
-                  <div className="space-y-2.5 rounded-2xl border border-white/10 bg-[#0B0A16]/75 p-4 font-mono-tabular text-xs">
+                  <div className="space-y-2.5 rounded-2xl border border-white/10 bg-[#0C1322]/75 p-4 font-mono-tabular text-xs">
                     {[
                       { label: 'WHO 2021 Safe', val: 15, color: '#5DCAA5' },
-                      { label: isHi ? 'आज का सबसे साफ घंटा' : 'Best 2h Window', val: snapshot.cleanestWindow.avgPm25, color: '#67E8F9' },
+                      { label: isHi ? 'आज का सबसे साफ घंटा' : 'Best 2h Window', val: snapshot.cleanestWindow.avgPm25, color: '#38BDF8' },
                       { label: isHi ? 'अभी (Live)' : 'Live Now', val: snapshot.current.pm25, color: cpcbAccent },
                     ].map((row) => {
                       const pct = Math.min(100, Math.max(8, Math.round((row.val / pmMaxBar) * 100)));
                       return (
                         <div key={row.label} className="space-y-1">
                           <div className="flex justify-between text-[11px]">
-                            <span className="text-[#A7A3C7]">{row.label}</span>
+                            <span className="text-[#9FB0C7]">{row.label}</span>
                             <strong className="text-[#E6EDF7]">{row.val} µg/m³</strong>
                           </div>
                           <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
@@ -417,9 +417,11 @@ export function BriefingSlideDeck({
 
                 <div className="grid grid-cols-1 gap-3 border-t border-white/10 pt-3 sm:grid-cols-2 text-xs">
                   <div className="flex items-center gap-2.5">
-                    <Wind className="h-4 w-4 shrink-0 text-[#67E8F9]" aria-hidden="true" />
-                    <span className="text-[#A7A3C7] font-mono-tabular">
-                      {snapshot.weather.temperatureC}°C · {snapshot.weather.windSpeedKmh} km/h · {snapshot.weather.humidityPct}% RH
+                    <Wind className="h-4 w-4 shrink-0 text-[#38BDF8]" aria-hidden="true" />
+                    <span className="text-[#9FB0C7] font-mono-tabular">
+                      {snapshot.weather.temperatureC !== null ? `${snapshot.weather.temperatureC}°C` : '--°C'} ·{' '}
+                      {snapshot.weather.windSpeedKmh !== null ? `${snapshot.weather.windSpeedKmh} km/h` : '-- km/h'} ·{' '}
+                      {snapshot.weather.humidityPct !== null ? `${snapshot.weather.humidityPct}% RH` : '--% RH'}
                     </span>
                   </div>
                   <div className="flex items-center gap-2.5">
@@ -444,20 +446,20 @@ export function BriefingSlideDeck({
               transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
               className="grid grid-cols-1 lg:grid-cols-12"
             >
-              <div className="flex flex-col justify-between gap-4 bg-[#0F0D22] p-6 sm:p-8 lg:col-span-7">
+              <div className="flex flex-col justify-between gap-4 bg-[#101A2C] p-6 sm:p-8 lg:col-span-7">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-mono-tabular text-xs font-semibold uppercase tracking-wider text-[#67E8F9]">
+                  <p className="font-mono-tabular text-xs font-semibold uppercase tracking-wider text-[#38BDF8]">
                     02 · {isHi ? '24-घंटे PM2.5 ग्राफ' : '24-Hour Air Curve'}
                   </p>
                   {scrubbedHour ? (
-                    <span className="rounded-md bg-[#14163F] px-2.5 py-0.5 font-mono-tabular text-xs font-bold text-[#67E8F9]">
+                    <span className="rounded-md bg-[#182947] px-2.5 py-0.5 font-mono-tabular text-xs font-bold text-[#38BDF8]">
                       {scrubbedHour.hourLabel}
                     </span>
                   ) : null}
                 </div>
 
                 {/* Integrated SVG Trend Sparkline + Interactive Bars */}
-                <div className="relative rounded-2xl border border-white/12 bg-[#0B0A16] p-3">
+                <div className="relative rounded-2xl border border-white/12 bg-[#0C1322] p-3">
                   {sparklinePath ? (
                     <svg
                       viewBox="0 0 100 100"
@@ -468,7 +470,7 @@ export function BriefingSlideDeck({
                       <path
                         d={sparklinePath}
                         fill="none"
-                        stroke="#67E8F9"
+                        stroke="#38BDF8"
                         strokeWidth="1.6"
                         strokeLinecap="round"
                       />
@@ -499,7 +501,7 @@ export function BriefingSlideDeck({
                           aria-pressed={active}
                           className={`group relative flex h-full w-full items-end rounded-sm transition-opacity ${
                             active
-                              ? 'ring-2 ring-[#67E8F9] ring-offset-1 ring-offset-[#0B0A16] opacity-100'
+                              ? 'ring-2 ring-[#38BDF8] ring-offset-1 ring-offset-[#0C1322] opacity-100'
                               : 'opacity-65 hover:opacity-100'
                           }`}
                         >
@@ -517,7 +519,7 @@ export function BriefingSlideDeck({
 
                 {/* Scrubber */}
                 <div className="flex items-center gap-3">
-                  <span className="font-mono-tabular text-[11px] text-[#A7A3C7]">Now</span>
+                  <span className="font-mono-tabular text-[11px] text-[#9FB0C7]">Now</span>
                   <input
                     type="range"
                     min={0}
@@ -525,9 +527,9 @@ export function BriefingSlideDeck({
                     value={selectedHourIdx}
                     onChange={(e) => setSelectedHourIdx(Number(e.target.value))}
                     aria-label="Scrub 24-hour forecast"
-                    className="flex-1 accent-[#67E8F9] cursor-pointer"
+                    className="flex-1 accent-[#38BDF8] cursor-pointer"
                   />
-                  <span className="font-mono-tabular text-[11px] text-[#A7A3C7]">+23h</span>
+                  <span className="font-mono-tabular text-[11px] text-[#9FB0C7]">+23h</span>
                 </div>
 
                 {/* Cleanest vs Peak compact pills */}
@@ -539,7 +541,7 @@ export function BriefingSlideDeck({
                     <strong className="text-[#E6EDF7]">
                       {snapshot.cleanestWindow.startLabel}–{snapshot.cleanestWindow.endLabel}
                     </strong>{' '}
-                    <span className="text-[#A7A3C7]">({snapshot.cleanestWindow.avgPm25} µg/m³)</span>
+                    <span className="text-[#9FB0C7]">({snapshot.cleanestWindow.avgPm25} µg/m³)</span>
                   </div>
                   <div>
                     <span className="font-semibold text-rose-300">
@@ -548,22 +550,22 @@ export function BriefingSlideDeck({
                     <strong className="text-[#E6EDF7]">
                       {snapshot.worstWindow.startLabel}–{snapshot.worstWindow.endLabel}
                     </strong>{' '}
-                    <span className="text-[#A7A3C7]">({snapshot.worstWindow.avgPm25} µg/m³)</span>
+                    <span className="text-[#9FB0C7]">({snapshot.worstWindow.avgPm25} µg/m³)</span>
                   </div>
                 </div>
               </div>
 
               <div
-                className="flex flex-col justify-between gap-4 bg-[#14163F] p-6 text-[#E6EDF7] sm:p-8 lg:col-span-5 lg:border-l lg:border-white/10"
+                className="flex flex-col justify-between gap-4 bg-[#182947] p-6 text-[#E6EDF7] sm:p-8 lg:col-span-5 lg:border-l lg:border-white/10"
                 style={{
-                  backgroundImage: 'radial-gradient(360px circle at 85% 15%, #67E8F920, transparent 60%)',
+                  backgroundImage: 'radial-gradient(360px circle at 85% 15%, #38BDF820, transparent 60%)',
                 }}
               >
                 {scrubbedHour ? (
                   <>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="inline-flex items-center gap-1.5 font-mono-tabular text-xs font-semibold text-[#67E8F9]">
+                        <span className="inline-flex items-center gap-1.5 font-mono-tabular text-xs font-semibold text-[#38BDF8]">
                           <Clock className="h-3.5 w-3.5" aria-hidden="true" />
                           <span>{scrubbedHour.hourLabel}</span>
                         </span>
@@ -592,19 +594,19 @@ export function BriefingSlideDeck({
 
                       <div className="grid grid-cols-3 gap-3 border-y border-white/12 py-4 font-mono-tabular">
                         <div>
-                          <span className="block text-[11px] text-[#A7A3C7]">US AQI</span>
+                          <span className="block text-[11px] text-[#9FB0C7]">US AQI</span>
                           <strong className="text-2xl font-bold text-white">
                             {scrubbedHour.usAqi}
                           </strong>
                         </div>
                         <div>
-                          <span className="block text-[11px] text-[#A7A3C7]">PM2.5</span>
-                          <strong className="text-2xl font-bold text-[#67E8F9]">
+                          <span className="block text-[11px] text-[#9FB0C7]">PM2.5</span>
+                          <strong className="text-2xl font-bold text-[#38BDF8]">
                             {scrubbedHour.pm25}
                           </strong>
                         </div>
                         <div>
-                          <span className="block text-[11px] text-[#A7A3C7]">NO₂ (µg/m³)</span>
+                          <span className="block text-[11px] text-[#9FB0C7]">NO₂ (µg/m³)</span>
                           <strong className="text-2xl font-bold text-white">
                             {scrubbedHour.no2 !== null ? scrubbedHour.no2 : '—'}
                           </strong>
@@ -612,7 +614,7 @@ export function BriefingSlideDeck({
                       </div>
 
                       {/* Hourly Weather Context */}
-                      <div className="flex flex-wrap items-center gap-4 text-xs font-mono-tabular text-[#A7A3C7]">
+                      <div className="flex flex-wrap items-center gap-4 text-xs font-mono-tabular text-[#9FB0C7]">
                         <span>
                           Temp: <strong className="text-[#E6EDF7]">{scrubbedHour.temperatureC ?? '--'}°C</strong>
                         </span>
@@ -625,7 +627,7 @@ export function BriefingSlideDeck({
                       </div>
                     </div>
 
-                    <p className="text-[11px] text-[#A7A3C7] font-mono-tabular">
+                    <p className="text-[11px] text-[#9FB0C7] font-mono-tabular">
                       Open-Meteo CAMS Hourly · General guidance, not medical advice
                     </p>
                   </>
@@ -644,10 +646,10 @@ export function BriefingSlideDeck({
               transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
               className="grid grid-cols-1 lg:grid-cols-12"
             >
-              <div className="divide-y divide-white/10 border-b border-white/10 bg-[#0B0A16]/90 lg:col-span-5 lg:border-b-0 lg:border-r">
+              <div className="divide-y divide-white/10 border-b border-white/10 bg-[#0C1322]/90 lg:col-span-5 lg:border-b-0 lg:border-r">
                 <div className="space-y-2 px-4 py-3 text-xs">
                   <div className="flex items-center justify-between font-semibold">
-                    <span className="text-[#A7A3C7]">
+                    <span className="text-[#9FB0C7]">
                       {isHi ? 'दैनिक लक्ष्य' : 'Daily Action Tracker'}
                     </span>
                     <span className="font-mono-tabular text-[#5DCAA5]">
@@ -673,8 +675,8 @@ export function BriefingSlideDeck({
                         key={act.id}
                         className={`flex items-stretch transition-colors ${
                           selected
-                            ? 'bg-[#14163F] text-[#E6EDF7]'
-                            : 'bg-[#0B0A16]/75 text-[#E6EDF7] hover:bg-[#14122E]'
+                            ? 'bg-[#182947] text-[#E6EDF7]'
+                            : 'bg-[#0C1322]/75 text-[#E6EDF7] hover:bg-[#142138]'
                         }`}
                       >
                         <button
@@ -691,7 +693,7 @@ export function BriefingSlideDeck({
                           {committed ? (
                             <CheckCircle2 className="h-4 w-4 text-[#5DCAA5]" aria-hidden="true" />
                           ) : (
-                            <Circle className="h-4 w-4 text-[#A7A3C7]/50" aria-hidden="true" />
+                            <Circle className="h-4 w-4 text-[#9FB0C7]/50" aria-hidden="true" />
                           )}
                         </button>
                         <button
@@ -699,12 +701,12 @@ export function BriefingSlideDeck({
                           onClick={() => setSelectedActionIdx(idx)}
                           className="flex flex-1 items-start gap-2.5 py-4 pr-4 text-left"
                         >
-                          <span className="font-mono-tabular text-xs font-bold text-[#67E8F9] shrink-0">
+                          <span className="font-mono-tabular text-xs font-bold text-[#38BDF8] shrink-0">
                             0{idx + 1}
                           </span>
                           <span
                             className={`text-sm font-semibold leading-snug ${
-                              committed ? 'line-through decoration-[#5DCAA5]/60 text-[#A7A3C7]' : ''
+                              committed ? 'line-through decoration-[#5DCAA5]/60 text-[#9FB0C7]' : ''
                             }`}
                           >
                             {act.title}
@@ -714,49 +716,49 @@ export function BriefingSlideDeck({
                     );
                   })
                 ) : (
-                  <div className="p-6 text-sm text-[#A7A3C7]">
+                  <div className="p-6 text-sm text-[#9FB0C7]">
                     {isHi ? 'सुझाव लोड हो रहे हैं...' : 'Preparing priority actions...'}
                   </div>
                 )}
               </div>
 
-              <div className="flex flex-col justify-between bg-[#0F0D22] p-6 sm:p-8 lg:col-span-7">
+              <div className="flex flex-col justify-between bg-[#101A2C] p-6 sm:p-8 lg:col-span-7">
                 {activeAction ? (
                   <div className="space-y-4">
                     <div className="flex flex-wrap items-center justify-between gap-2 font-mono-tabular text-xs">
-                      <span className="font-semibold text-[#67E8F9]">
+                      <span className="font-semibold text-[#38BDF8]">
                         {activeAction.effort} · {activeAction.cost}
                       </span>
-                      <span className="text-[#A7A3C7]">{activeAction.whoFor}</span>
+                      <span className="text-[#9FB0C7]">{activeAction.whoFor}</span>
                     </div>
                     <h3 className="font-display text-xl font-semibold text-[#E6EDF7]">
                       {activeAction.title}
                     </h3>
 
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 text-xs">
-                      <div className="rounded-xl border border-white/10 bg-[#0B0A16]/75 p-3">
-                        <span className="font-semibold text-[#67E8F9]">
+                      <div className="rounded-xl border border-white/10 bg-[#0C1322]/75 p-3">
+                        <span className="font-semibold text-[#38BDF8]">
                           {isHi ? 'क्यों' : 'Why'}
                         </span>
                         <p className="mt-1 text-[#E6EDF7]/90 leading-relaxed">{activeAction.why}</p>
                       </div>
-                      <div className="rounded-xl border border-white/10 bg-[#0B0A16]/75 p-3">
+                      <div className="rounded-xl border border-white/10 bg-[#0C1322]/75 p-3">
                         <span className="font-semibold text-[#5DCAA5]">
                           {isHi ? 'कब' : 'When'}
                         </span>
                         <p className="mt-1 text-[#E6EDF7]/90 leading-relaxed">{activeAction.when}</p>
                       </div>
-                      <div className="rounded-xl border border-white/10 bg-[#0B0A16]/75 p-3">
+                      <div className="rounded-xl border border-white/10 bg-[#0C1322]/75 p-3">
                         <span className="font-semibold text-[#5DCAA5]">
                           {isHi ? 'लाभ' : 'Expected Benefit'}
                         </span>
-                        <p className="mt-1 text-[#A7A3C7]">{activeAction.expectedBenefit}</p>
+                        <p className="mt-1 text-[#9FB0C7]">{activeAction.expectedBenefit}</p>
                       </div>
-                      <div className="rounded-xl border border-white/10 bg-[#0B0A16]/75 p-3">
+                      <div className="rounded-xl border border-white/10 bg-[#0C1322]/75 p-3">
                         <span className="font-semibold text-[#E6EDF7]">
                           {isHi ? 'सीमाएं' : 'Scope Limit'}
                         </span>
-                        <p className="mt-1 text-[#A7A3C7]">{activeAction.limitations}</p>
+                        <p className="mt-1 text-[#9FB0C7]">{activeAction.limitations}</p>
                       </div>
                     </div>
                   </div>
@@ -776,20 +778,20 @@ export function BriefingSlideDeck({
               className="grid grid-cols-1 lg:grid-cols-12"
             >
               <div
-                className="flex flex-col justify-between gap-4 bg-[#14163F] p-6 text-[#E6EDF7] sm:p-8 lg:col-span-5 lg:border-r lg:border-white/10"
+                className="flex flex-col justify-between gap-4 bg-[#182947] p-6 text-[#E6EDF7] sm:p-8 lg:col-span-5 lg:border-r lg:border-white/10"
                 style={{
-                  backgroundImage: 'radial-gradient(360px circle at 20% 25%, #67E8F922, transparent 60%)',
+                  backgroundImage: 'radial-gradient(360px circle at 20% 25%, #38BDF822, transparent 60%)',
                 }}
               >
                 <div className="flex items-center justify-between gap-4">
                   <div className="space-y-1">
-                    <p className="font-mono-tabular text-xs font-semibold text-[#67E8F9]">
+                    <p className="font-mono-tabular text-xs font-semibold text-[#38BDF8]">
                       04 · CADR Gauge
                     </p>
                     <h3 className="font-display text-2xl font-semibold text-white">
                       {roomSqFt} sq ft
                     </h3>
-                    <p className="font-mono-tabular text-xs text-[#A7A3C7]">
+                    <p className="font-mono-tabular text-xs text-[#9FB0C7]">
                       Vol: {roomVolumeM3} m³
                     </p>
                   </div>
@@ -810,7 +812,7 @@ export function BriefingSlideDeck({
                         cy="50"
                         r="40"
                         fill="none"
-                        stroke="#67E8F9"
+                        stroke="#38BDF8"
                         strokeWidth="8"
                         strokeLinecap="round"
                         strokeDasharray={2 * Math.PI * 40}
@@ -824,22 +826,22 @@ export function BriefingSlideDeck({
                       <strong className="block text-sm font-bold text-white">
                         {recommendedCadrM3h}
                       </strong>
-                      <span className="text-[10px] text-[#A7A3C7]">m³/h</span>
+                      <span className="text-[10px] text-[#9FB0C7]">m³/h</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 border-t border-white/12 pt-4 font-mono-tabular">
                   <div>
-                    <span className="block text-[11px] text-[#A7A3C7]">
+                    <span className="block text-[11px] text-[#9FB0C7]">
                       {isHi ? 'HEPA CADR' : 'Target CADR'}
                     </span>
-                    <strong className="text-2xl font-bold text-[#67E8F9]">
+                    <strong className="text-2xl font-bold text-[#38BDF8]">
                       {recommendedCadrM3h} m³/h
                     </strong>
                   </div>
                   <div>
-                    <span className="block text-[11px] text-[#A7A3C7]">
+                    <span className="block text-[11px] text-[#9FB0C7]">
                       {isHi ? '50% साफ समय' : '50% PM Drop'}
                     </span>
                     <strong className="text-2xl font-bold text-[#5DCAA5]">
@@ -849,15 +851,15 @@ export function BriefingSlideDeck({
                 </div>
               </div>
 
-              <div className="flex flex-col justify-between gap-5 bg-[#0F0D22] p-6 sm:p-8 lg:col-span-7">
+              <div className="flex flex-col justify-between gap-5 bg-[#101A2C] p-6 sm:p-8 lg:col-span-7">
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs font-semibold text-[#E6EDF7]">
                       <span className="inline-flex items-center gap-1.5">
-                        <Sliders className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
+                        <Sliders className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
                         <span>{isHi ? 'कमरे का आकार (sq ft)' : 'Room Size (sq ft)'}</span>
                       </span>
-                      <span className="font-mono-tabular text-[#67E8F9]">{roomSqFt} sq ft</span>
+                      <span className="font-mono-tabular text-[#38BDF8]">{roomSqFt} sq ft</span>
                     </div>
                     <input
                       type="range"
@@ -867,30 +869,30 @@ export function BriefingSlideDeck({
                       value={roomSqFt}
                       onChange={(e) => setRoomSqFt(Number(e.target.value))}
                       aria-label="Room area in square feet"
-                      className="w-full accent-[#67E8F9] cursor-pointer"
+                      className="w-full accent-[#38BDF8] cursor-pointer"
                     />
-                    <div className="flex justify-between font-mono-tabular text-[11px] text-[#A7A3C7]">
+                    <div className="flex justify-between font-mono-tabular text-[11px] text-[#9FB0C7]">
                       <span>80 sq ft</span>
                       <span>200 sq ft</span>
                       <span>600 sq ft</span>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0B0A16]/85 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0C1322]/85 p-4">
                     <div className="text-xs">
                       <p className="font-semibold text-[#E6EDF7]">
                         {isHi ? 'खिड़की/दरवाजा सील' : 'Room Air Seal'}
                       </p>
-                      <p className="text-[#A7A3C7] font-mono-tabular mt-0.5">
+                      <p className="text-[#9FB0C7] font-mono-tabular mt-0.5">
                         {roomSealed ? '4.8 ACH target' : '2.6 ACH (leaky gap penalty)'}
                       </p>
                     </div>
-                    <div className="inline-flex rounded-lg border border-white/12 bg-[#0F0D22] p-0.5 text-xs">
+                    <div className="inline-flex rounded-lg border border-white/12 bg-[#101A2C] p-0.5 text-xs">
                       <button
                         type="button"
                         onClick={() => setRoomSealed(true)}
                         className={`rounded-md px-3 py-1 font-semibold transition-colors ${
-                          roomSealed ? 'bg-[#67E8F9] text-[#0B0A16]' : 'text-[#A7A3C7]'
+                          roomSealed ? 'bg-[#38BDF8] text-[#0C1322]' : 'text-[#9FB0C7]'
                         }`}
                       >
                         {isHi ? 'बंद सील' : 'Sealed'}
@@ -899,7 +901,7 @@ export function BriefingSlideDeck({
                         type="button"
                         onClick={() => setRoomSealed(false)}
                         className={`rounded-md px-3 py-1 font-semibold transition-colors ${
-                          !roomSealed ? 'bg-[#67E8F9] text-[#0B0A16]' : 'text-[#A7A3C7]'
+                          !roomSealed ? 'bg-[#38BDF8] text-[#0C1322]' : 'text-[#9FB0C7]'
                         }`}
                       >
                         {isHi ? 'खुली दरार' : 'Leaky'}
@@ -908,13 +910,13 @@ export function BriefingSlideDeck({
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3 text-xs text-[#A7A3C7]">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3 text-xs text-[#9FB0C7]">
                   <span className="font-mono-tabular">
                     {roomSqFt} × 0.255 × {roomSealed ? '4.8' : '6.2'} = {recommendedCadrM3h} m³/h
                   </span>
                   <a
                     href="#what-if"
-                    className="font-semibold text-[#67E8F9] underline underline-offset-4 whitespace-nowrap shrink-0"
+                    className="font-semibold text-[#38BDF8] underline underline-offset-4 whitespace-nowrap shrink-0"
                   >
                     {isHi ? 'पूर्ण कैलकुलेटर →' : 'Full Simulator →'}
                   </a>
@@ -934,7 +936,7 @@ export function BriefingSlideDeck({
               className="grid grid-cols-1 lg:grid-cols-12"
             >
               <div
-                className="flex flex-col justify-between gap-4 bg-[#14163F] p-6 text-[#E6EDF7] sm:p-8 lg:col-span-5 lg:border-r lg:border-white/10"
+                className="flex flex-col justify-between gap-4 bg-[#182947] p-6 text-[#E6EDF7] sm:p-8 lg:col-span-5 lg:border-r lg:border-white/10"
                 style={{
                   backgroundImage: 'radial-gradient(360px circle at 80% 80%, #5DCAA522, transparent 62%)',
                 }}
@@ -951,7 +953,7 @@ export function BriefingSlideDeck({
                 {/* 10x10 Visual Home Matrix */}
                 <div
                   aria-hidden="true"
-                  className="grid grid-cols-10 gap-1 rounded-xl border border-white/10 bg-[#0B0A16]/75 p-2.5"
+                  className="grid grid-cols-10 gap-1 rounded-xl border border-white/10 bg-[#0C1322]/75 p-2.5"
                 >
                   {Array.from({ length: 100 }, (_, i) => {
                     const active = i < rippleScale;
@@ -968,7 +970,7 @@ export function BriefingSlideDeck({
 
                 <div className="flex items-center justify-between gap-4 border-t border-white/12 pt-4 font-mono-tabular">
                   <div>
-                    <span className="block text-[11px] text-[#A7A3C7]">
+                    <span className="block text-[11px] text-[#9FB0C7]">
                       {isHi ? 'CO₂ बचत / माह' : 'CO₂ Saved / mo'}
                     </span>
                     <strong className="text-2xl font-bold text-[#5DCAA5]">
@@ -976,20 +978,20 @@ export function BriefingSlideDeck({
                     </strong>
                   </div>
                   <div className="text-right">
-                    <span className="block text-[11px] text-[#A7A3C7]">
+                    <span className="block text-[11px] text-[#9FB0C7]">
                       {isHi ? 'पेड़-माह समतुल्य' : 'Tree-Months'}
                     </span>
-                    <strong className="text-2xl font-bold text-[#67E8F9]">
+                    <strong className="text-2xl font-bold text-[#38BDF8]">
                       ~{monthlyTreeMonths}
                     </strong>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col justify-between gap-5 bg-[#0F0D22] p-6 sm:p-8 lg:col-span-7">
+              <div className="flex flex-col justify-between gap-5 bg-[#101A2C] p-6 sm:p-8 lg:col-span-7">
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[#67E8F9]">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[#38BDF8]">
                       <Users className="h-3.5 w-3.5" aria-hidden="true" />
                       <span>{isHi ? 'परिवार गिनती' : 'Households (1–100)'}</span>
                     </span>
@@ -1001,8 +1003,8 @@ export function BriefingSlideDeck({
                           onClick={() => setRippleScale(n)}
                           className={`min-h-[28px] rounded-md border px-2.5 py-0.5 font-mono-tabular text-xs font-semibold transition-colors ${
                             rippleScale === n
-                              ? 'border-[#67E8F9] bg-[#67E8F9] text-[#0B0A16]'
-                              : 'border-white/12 bg-[#0B0A16] text-[#E6EDF7] hover:bg-[#14163F]'
+                              ? 'border-[#38BDF8] bg-[#38BDF8] text-[#0C1322]'
+                              : 'border-white/12 bg-[#0C1322] text-[#E6EDF7] hover:bg-[#182947]'
                           }`}
                         >
                           {n}
@@ -1019,20 +1021,20 @@ export function BriefingSlideDeck({
                     value={rippleScale}
                     onChange={(e) => setRippleScale(Number(e.target.value))}
                     aria-label="Number of participating households"
-                    className="w-full accent-[#67E8F9] cursor-pointer"
+                    className="w-full accent-[#38BDF8] cursor-pointer"
                   />
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 font-mono-tabular text-xs">
-                    <div className="rounded-xl border border-white/10 bg-[#0B0A16]/85 p-3.5">
-                      <span className="text-[#A7A3C7] block">
+                    <div className="rounded-xl border border-white/10 bg-[#0C1322]/85 p-3.5">
+                      <span className="text-[#9FB0C7] block">
                         {isHi ? 'व्यक्तिगत संपर्क में कमी' : 'Exposure Drop / Home'}
                       </span>
-                      <strong className="mt-1 block text-xl text-[#67E8F9]">
+                      <strong className="mt-1 block text-xl text-[#38BDF8]">
                         ~{previewImpact.totalExposureReductionPct}%
                       </strong>
                     </div>
-                    <div className="rounded-xl border border-white/10 bg-[#0B0A16]/85 p-3.5">
-                      <span className="text-[#A7A3C7] block">
+                    <div className="rounded-xl border border-white/10 bg-[#0C1322]/85 p-3.5">
+                      <span className="text-[#9FB0C7] block">
                         {isHi ? 'साप्ताहिक CO₂ बचत' : 'Weekly Pace'}
                       </span>
                       <strong className="mt-1 block text-xl text-[#5DCAA5]">
@@ -1042,7 +1044,7 @@ export function BriefingSlideDeck({
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3 text-[11px] font-mono-tabular text-[#A7A3C7]">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3 text-[11px] font-mono-tabular text-[#9FB0C7]">
                   <span className="inline-flex items-center gap-1.5 text-[#5DCAA5]">
                     <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
                     <span>
@@ -1060,7 +1062,7 @@ export function BriefingSlideDeck({
       </div>
 
       {/* Bottom Interactive Progress Track */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-[#0B0A16]/90 px-5 py-2.5 sm:px-7">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-[#0C1322]/90 px-5 py-2.5 sm:px-7">
         <div className="flex items-center gap-2" aria-label="Slide progress indicators">
           {slides.map((s, idx) => {
             const active = idx === activeSlideIdx;
@@ -1071,13 +1073,13 @@ export function BriefingSlideDeck({
                 onClick={() => selectSlide(idx)}
                 aria-label={`${isHi ? s.titleHi : s.titleEn} (${s.num})`}
                 className={`h-2 rounded-full transition-all ${
-                  active ? 'w-8 bg-[#67E8F9]' : 'w-2.5 bg-white/25 hover:bg-[#5DCAA5]'
+                  active ? 'w-8 bg-[#38BDF8]' : 'w-2.5 bg-white/25 hover:bg-[#5DCAA5]'
                 }`}
               />
             );
           })}
         </div>
-        <span className="font-mono-tabular text-[11px] text-[#A7A3C7]">
+        <span className="font-mono-tabular text-[11px] text-[#9FB0C7]">
           {snapshot.sourceName} · {isHi ? 'केवल सामान्य मार्गदर्शन' : 'General guidance, not medical advice'}
         </span>
       </div>

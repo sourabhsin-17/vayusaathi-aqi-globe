@@ -69,7 +69,7 @@ export function CityHeroCarousel({
     return idx >= 0 ? idx : 0;
   });
   const [autoPlay, setAutoPlay] = useState(true);
-  const [imgErrorKey, setImgErrorKey] = useState<string | null>(null);
+  const [failedImageUrls, setFailedImageUrls] = useState<Record<string, boolean>>({});
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [reduceMotion] = useState(() =>
     typeof window !== 'undefined' &&
@@ -177,13 +177,13 @@ export function CityHeroCarousel({
     ? CPCB_CATEGORY_STYLES[snapshot.cpcb.categoryKey]
     : null;
   const usLabel = snapshot ? getUsAqiLabel(snapshot.current.usAqi) : null;
-  const accentGlowHex = cpcbStyle?.accentHex ?? '#67E8F9';
+  const accentGlowHex = cpcbStyle?.accentHex ?? '#38BDF8';
 
   return (
     <section aria-label="Featured world and Indian cities showcase" className="space-y-4">
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:items-stretch">
         {/* Left: Cinematic Ken-Burns City Photo Showcase (8 cols) */}
-        <div className="relative flex min-h-[410px] flex-col justify-between overflow-hidden rounded-3xl border border-white/12 bg-[#0B0A16] text-[#E6EDF7] sm:min-h-[470px] lg:col-span-8 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.82)]">
+        <div className="relative flex min-h-[410px] flex-col justify-between overflow-hidden rounded-3xl border border-white/12 bg-[#0C1322] text-[#E6EDF7] sm:min-h-[470px] lg:col-span-8 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.82)]">
           <AnimatePresence mode="wait">
             <motion.div
               key={displayImageUrl}
@@ -196,7 +196,7 @@ export function CityHeroCarousel({
               }}
               className="absolute inset-0"
             >
-              {imgErrorKey === displayImageUrl ? (
+              {failedImageUrls[displayImageUrl] ? (
                 <div
                   className={`h-full w-full bg-gradient-to-br ${displayFallbackGradient}`}
                   aria-hidden="true"
@@ -206,7 +206,11 @@ export function CityHeroCarousel({
                   src={displayImageUrl}
                   alt={displayAlt}
                   referrerPolicy="no-referrer"
-                  onError={() => setImgErrorKey(displayImageUrl)}
+                  onError={() =>
+                    setFailedImageUrls((prev) =>
+                      prev[displayImageUrl] ? prev : { ...prev, [displayImageUrl]: true }
+                    )
+                  }
                   className="h-full w-full object-cover"
                 />
               )}
@@ -216,7 +220,7 @@ export function CityHeroCarousel({
           {/* Cosmic Obsidian Scrim + Dynamic Ambient Aura Glow */}
           <div
             aria-hidden="true"
-            className="absolute inset-0 bg-gradient-to-t from-[#06050E] via-[#0B0A16]/45 to-[#06050E]/60"
+            className="absolute inset-0 bg-gradient-to-t from-[#070B12] via-[#0C1322]/45 to-[#070B12]/60"
           />
           <div
             aria-hidden="true"
@@ -229,7 +233,7 @@ export function CityHeroCarousel({
           {/* Top Bar */}
           <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 p-5 sm:p-7">
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="rounded-lg border border-white/15 bg-[#06050E]/80 px-2.5 py-1 font-mono-tabular font-semibold tracking-wide text-[#67E8F9] backdrop-blur-sm">
+              <span className="rounded-lg border border-white/15 bg-[#070B12]/80 px-2.5 py-1 font-mono-tabular font-semibold tracking-wide text-[#38BDF8] backdrop-blur-sm">
                 {displayNetwork}
               </span>
               <span className="text-[#E6EDF7]/90 font-medium drop-shadow">{displayLandmark}</span>
@@ -240,7 +244,7 @@ export function CityHeroCarousel({
                 type="button"
                 onClick={() => setAutoPlay((p) => !p)}
                 aria-label={autoPlay ? 'Pause city slideshow' : 'Play city slideshow'}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-[#0B0A16]/85 text-[#E6EDF7] hover:bg-[#14163F] transition-colors"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-[#0C1322]/85 text-[#E6EDF7] hover:bg-[#182947] transition-colors"
               >
                 {autoPlay ? (
                   <Pause className="h-3.5 w-3.5" aria-hidden="true" />
@@ -259,11 +263,11 @@ export function CityHeroCarousel({
                   );
                 }}
                 aria-label="Previous city slide"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-[#0B0A16]/85 text-[#E6EDF7] hover:bg-[#14163F] transition-colors"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-[#0C1322]/85 text-[#E6EDF7] hover:bg-[#182947] transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" aria-hidden="true" />
               </button>
-              <span className="px-2 font-mono-tabular text-xs font-semibold text-[#67E8F9]">
+              <span className="px-2 font-mono-tabular text-xs font-semibold text-[#38BDF8]">
                 {String(slideIndex + 1).padStart(2, '0')} /{' '}
                 {String(FEATURED_CITY_SLIDES.length).padStart(2, '0')}
               </span>
@@ -274,7 +278,7 @@ export function CityHeroCarousel({
                   setSlideIndex((prev) => (prev + 1) % FEATURED_CITY_SLIDES.length);
                 }}
                 aria-label="Next city slide"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-[#0B0A16]/85 text-[#E6EDF7] hover:bg-[#14163F] transition-colors"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-[#0C1322]/85 text-[#E6EDF7] hover:bg-[#182947] transition-colors"
               >
                 <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -308,7 +312,7 @@ export function CityHeroCarousel({
                     initial={{ opacity: 0, y: 10, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ duration: 0.32 }}
-                    className="flex items-center gap-4 rounded-2xl border border-white/15 bg-[#0B0A16]/90 px-4 py-3 backdrop-blur-md shadow-xl"
+                    className="flex items-center gap-4 rounded-2xl border border-white/15 bg-[#0C1322]/90 px-4 py-3 backdrop-blur-md shadow-xl"
                   >
                     <AirProgressRing
                       usAqi={snapshot.current.usAqi}
@@ -320,10 +324,10 @@ export function CityHeroCarousel({
                       lang={lang}
                     />
                     <div className="space-y-1 text-xs">
-                      <p className="font-mono-tabular text-[11px] font-medium text-[#A7A3C7]">
-                        PM2.5 · {snapshot.weather.temperatureC}°C
+                      <p className="font-mono-tabular text-[11px] font-medium text-[#9FB0C7]">
+                        PM2.5{snapshot.weather.temperatureC !== null ? ` · ${snapshot.weather.temperatureC}°C` : ''}
                       </p>
-                      <p className="font-mono-tabular text-base font-bold text-[#67E8F9]">
+                      <p className="font-mono-tabular text-base font-bold text-[#38BDF8]">
                         {snapshot.current.pm25} µg/m³ ({snapshot.whoPm25Ratio ?? Number((snapshot.current.pm25 / 15).toFixed(1))}× WHO)
                       </p>
                       <p className="text-xs font-semibold text-[#E6EDF7]">
@@ -336,14 +340,14 @@ export function CityHeroCarousel({
                 <button
                   type="button"
                   onClick={() => onSelectLocation(currentSlide.city)}
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#67E8F9] px-4 py-2.5 text-xs font-bold text-[#0B0A16] hover:bg-[#A5F3FC] whitespace-nowrap shrink-0 shadow-lg transition-transform hover:-translate-y-0.5"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#38BDF8] px-4 py-2.5 text-xs font-bold text-[#0C1322] hover:bg-[#7DD3FC] whitespace-nowrap shrink-0 shadow-lg transition-transform hover:-translate-y-0.5"
                 >
                   <span>
                     {lang === 'hi'
                       ? `${currentSlide.title} देखें`
                       : `Inspect ${currentSlide.title}`}
                   </span>
-                  <ArrowRight className="h-3.5 w-3.5 text-[#0B0A16]" aria-hidden="true" />
+                  <ArrowRight className="h-3.5 w-3.5 text-[#0C1322]" aria-hidden="true" />
                 </button>
               )}
             </div>
@@ -371,10 +375,10 @@ export function CityHeroCarousel({
                     }}
                     className={`group flex min-h-[40px] items-center gap-2 rounded-xl border pr-3 pl-1.5 py-1 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
                       isSlideActive
-                        ? 'border-[#67E8F9] bg-[#67E8F9] text-[#0B0A16] shadow-[0_0_20px_-4px_rgba(103,232,249,0.65)]'
+                        ? 'border-[#38BDF8] bg-[#38BDF8] text-[#0C1322] shadow-[0_0_20px_-4px_rgba(103,232,249,0.65)]'
                         : isSelectedCity
-                        ? 'border-[#5DCAA5]/70 bg-[#14163F]/90 text-[#5DCAA5] hover:bg-[#14163F]'
-                        : 'border-white/12 bg-[#06050E]/80 text-[#E6EDF7] hover:bg-[#14163F]'
+                        ? 'border-[#5DCAA5]/70 bg-[#182947]/90 text-[#5DCAA5] hover:bg-[#182947]'
+                        : 'border-white/12 bg-[#070B12]/80 text-[#E6EDF7] hover:bg-[#182947]'
                     }`}
                   >
                     <img
@@ -399,11 +403,11 @@ export function CityHeroCarousel({
                 animate={{ scaleX: 1 }}
                 transition={{ duration: 6.5, ease: 'linear' }}
                 style={{ transformOrigin: 'left center' }}
-                className="h-full w-full bg-gradient-to-r from-[#67E8F9] to-[#5DCAA5]"
+                className="h-full w-full bg-gradient-to-r from-[#38BDF8] to-[#5DCAA5]"
               />
             ) : (
               <div
-                className="h-full bg-[#67E8F9]"
+                className="h-full bg-[#38BDF8]"
                 style={{ width: `${((slideIndex + 1) / FEATURED_CITY_SLIDES.length) * 100}%` }}
               />
             )}
@@ -415,7 +419,7 @@ export function CityHeroCarousel({
           <div className="space-y-4">
             <div className="space-y-2.5">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-mono-tabular text-[11px] font-semibold uppercase tracking-wider text-[#67E8F9]">
+                <p className="font-mono-tabular text-[11px] font-semibold uppercase tracking-wider text-[#38BDF8]">
                   {lang === 'hi' ? 'सक्रिय केंद्र' : 'Active Station'}
                 </p>
 
@@ -426,8 +430,8 @@ export function CityHeroCarousel({
                     aria-pressed={easyRead}
                     className={`inline-flex min-h-[32px] items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-colors whitespace-nowrap shrink-0 ${
                       easyRead
-                        ? 'border-[#67E8F9] bg-[#67E8F9] text-[#0B0A16]'
-                        : 'border-white/12 bg-[#0B0A16] text-[#E6EDF7] hover:bg-[#14163F]'
+                        ? 'border-[#38BDF8] bg-[#38BDF8] text-[#0C1322]'
+                        : 'border-white/12 bg-[#0C1322] text-[#E6EDF7] hover:bg-[#182947]'
                     }`}
                   >
                     <Eye className="h-3 w-3" aria-hidden="true" />
@@ -445,13 +449,13 @@ export function CityHeroCarousel({
                   <div
                     role="group"
                     aria-label={t(lang, 'languageLabel')}
-                    className="inline-flex items-center rounded-lg border border-white/12 bg-[#0B0A16] p-0.5 shrink-0"
+                    className="inline-flex items-center rounded-lg border border-white/12 bg-[#0C1322] p-0.5 shrink-0"
                   >
                     <button
                       type="button"
                       onClick={() => onChangeLanguage('en')}
                       className={`min-h-[28px] rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap ${
-                        lang === 'en' ? 'bg-[#14163F] text-[#67E8F9]' : 'text-[#A7A3C7]'
+                        lang === 'en' ? 'bg-[#182947] text-[#38BDF8]' : 'text-[#9FB0C7]'
                       }`}
                     >
                       EN
@@ -460,7 +464,7 @@ export function CityHeroCarousel({
                       type="button"
                       onClick={() => onChangeLanguage('hi')}
                       className={`min-h-[28px] rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap ${
-                        lang === 'hi' ? 'bg-[#14163F] text-[#67E8F9]' : 'text-[#A7A3C7]'
+                        lang === 'hi' ? 'bg-[#182947] text-[#38BDF8]' : 'text-[#9FB0C7]'
                       }`}
                     >
                       हिन्दी
@@ -473,7 +477,7 @@ export function CityHeroCarousel({
                 <h2 className="text-xl font-semibold text-[#E6EDF7] font-display leading-snug">
                   {selected.name}, {selected.state}
                 </h2>
-                <p className="font-mono-tabular text-xs text-[#A7A3C7]">
+                <p className="font-mono-tabular text-xs text-[#9FB0C7]">
                   {formatCoords(selected.latitude, selected.longitude)}
                 </p>
               </div>
@@ -488,7 +492,7 @@ export function CityHeroCarousel({
               </label>
               <div className="relative">
                 <Search
-                  className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#A7A3C7]"
+                  className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9FB0C7]"
                   aria-hidden="true"
                 />
                 <input
@@ -499,7 +503,7 @@ export function CityHeroCarousel({
                   placeholder={
                     lang === 'hi' ? 'कोई भी शहर खोजें...' : 'Search any city worldwide...'
                   }
-                  className="min-h-[42px] w-full rounded-xl border border-white/12 bg-[#0B0A16] pl-8 pr-9 text-xs text-[#E6EDF7] placeholder:text-[#A7A3C7]/70 focus:border-[#67E8F9] focus:bg-[#14122E] focus:outline-none"
+                  className="min-h-[42px] w-full rounded-xl border border-white/12 bg-[#0C1322] pl-8 pr-9 text-xs text-[#E6EDF7] placeholder:text-[#9FB0C7]/70 focus:border-[#38BDF8] focus:bg-[#142138] focus:outline-none"
                 />
                 {cityQuery ? (
                   <button
@@ -511,7 +515,7 @@ export function CityHeroCarousel({
                       setSearchError(null);
                     }}
                     aria-label={lang === 'hi' ? 'खोज साफ़ करें' : 'Clear city search'}
-                    className="absolute right-1.5 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#A7A3C7] hover:bg-white/10 hover:text-white"
+                    className="absolute right-1.5 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#9FB0C7] hover:bg-white/10 hover:text-white"
                   >
                     <X className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
@@ -519,7 +523,7 @@ export function CityHeroCarousel({
               </div>
 
               {searching ? (
-                <p role="status" className="text-[11px] text-[#A7A3C7]">
+                <p role="status" className="text-[11px] text-[#9FB0C7]">
                   {lang === 'hi' ? 'खोज रहे हैं...' : 'Searching...'}
                 </p>
               ) : null}
@@ -529,7 +533,7 @@ export function CityHeroCarousel({
                 </p>
               ) : null}
               {!searching && !searchError && hasSearched && cityQuery.trim().length >= 2 && searchResults.length === 0 ? (
-                <p role="status" className="rounded-xl border border-white/10 bg-[#0B0A16] px-3 py-2 text-[11px] text-[#A7A3C7]">
+                <p role="status" className="rounded-xl border border-white/10 bg-[#0C1322] px-3 py-2 text-[11px] text-[#9FB0C7]">
                   {lang === 'hi'
                     ? `"${cityQuery.trim()}" के लिए कोई शहर नहीं मिला।`
                     : `No matching cities found for "${cityQuery.trim()}".`}
@@ -538,7 +542,7 @@ export function CityHeroCarousel({
               {searchResults.length > 0 ? (
                 <ul
                   aria-label="Global city search results"
-                  className="absolute left-0 right-0 top-[46px] z-30 max-h-56 overflow-y-auto divide-y divide-white/10 rounded-xl border border-white/15 bg-[#0F0D22] shadow-2xl"
+                  className="absolute left-0 right-0 top-[46px] z-30 max-h-56 overflow-y-auto divide-y divide-white/10 rounded-xl border border-white/15 bg-[#101A2C] shadow-2xl"
                 >
                   {searchResults.map((city) => (
                     <li key={city.id}>
@@ -550,13 +554,13 @@ export function CityHeroCarousel({
                           setSearchResults([]);
                           setHasSearched(false);
                         }}
-                        className="flex w-full min-h-[42px] items-center justify-between gap-2 px-3 py-2 text-left text-xs hover:bg-[#14163F]"
+                        className="flex w-full min-h-[42px] items-center justify-between gap-2 px-3 py-2 text-left text-xs hover:bg-[#182947]"
                       >
                         <span className="truncate font-semibold text-[#E6EDF7]">
                           {city.name}{' '}
-                          <span className="font-normal text-[#A7A3C7]">{city.state}</span>
+                          <span className="font-normal text-[#9FB0C7]">{city.state}</span>
                         </span>
-                        <span className="font-mono-tabular text-[10px] text-[#A7A3C7] shrink-0">
+                        <span className="font-mono-tabular text-[10px] text-[#9FB0C7] shrink-0">
                           {formatCoords(city.latitude, city.longitude)}
                         </span>
                       </button>
@@ -573,33 +577,33 @@ export function CityHeroCarousel({
                   <span className="text-xs font-semibold text-[#E6EDF7]">
                     {lang === 'hi' ? snapshot.cpcb.labelHi : snapshot.cpcb.labelEn}
                   </span>
-                  <span className="font-mono-tabular text-[11px] text-[#A7A3C7]">
+                  <span className="font-mono-tabular text-[11px] text-[#9FB0C7]">
                     {freshness}
                   </span>
                 </div>
                 <div className="mt-2 grid grid-cols-3 gap-2 font-mono-tabular">
                   <div>
-                    <span className="block text-[11px] text-[#A7A3C7]">US AQI</span>
+                    <span className="block text-[11px] text-[#9FB0C7]">US AQI</span>
                     <strong className="text-xl font-extrabold text-[#E6EDF7]">
                       {snapshot.current.usAqi}
                     </strong>
                   </div>
                   <div>
-                    <span className="block text-[11px] text-[#A7A3C7]">PM2.5</span>
+                    <span className="block text-[11px] text-[#9FB0C7]">PM2.5</span>
                     <strong className="text-xl font-extrabold text-[#E6EDF7]">
                       {snapshot.current.pm25}
                     </strong>
                   </div>
                   <div>
-                    <span className="block text-[11px] text-[#A7A3C7]">Temp</span>
+                    <span className="block text-[11px] text-[#9FB0C7]">Temp</span>
                     <strong className="text-xl font-extrabold text-[#E6EDF7]">
-                      {snapshot.weather.temperatureC}°
+                      {snapshot.weather.temperatureC !== null ? `${snapshot.weather.temperatureC}°` : '--'}
                     </strong>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border border-white/12 bg-[#0B0A16] p-4 text-xs text-[#A7A3C7]">
+              <div className="rounded-2xl border border-white/12 bg-[#0C1322] p-4 text-xs text-[#9FB0C7]">
                 {loading
                   ? lang === 'hi'
                     ? 'लाइव डेटा लोड हो रहा है...'
@@ -614,7 +618,7 @@ export function CityHeroCarousel({
             <div className="space-y-1">
               <label
                 htmlFor="hero-persona-select"
-                className="block text-xs font-semibold text-[#A7A3C7]"
+                className="block text-xs font-semibold text-[#9FB0C7]"
               >
                 {t(lang, 'samplePersonasLabel')}
               </label>
@@ -625,7 +629,7 @@ export function CityHeroCarousel({
                   const found = SAMPLE_PERSONAS.find((p) => p.id === e.target.value);
                   if (found) onSelectPersona(found);
                 }}
-                className="w-full min-h-[40px] rounded-xl border border-white/12 bg-[#0B0A16] px-3 text-xs font-medium text-[#E6EDF7]"
+                className="w-full min-h-[40px] rounded-xl border border-white/12 bg-[#0C1322] px-3 text-xs font-medium text-[#E6EDF7]"
               >
                 <option value="" disabled>
                   {lang === 'hi' ? 'परिवार प्रोफ़ाइल बदलें...' : 'Switch household profile...'}
@@ -642,16 +646,16 @@ export function CityHeroCarousel({
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/10 pt-4">
             <a
               href="#all-cities"
-              className="inline-flex min-h-[40px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#67E8F9] px-3 py-2 text-xs font-semibold text-[#0B0A16] hover:bg-[#A5F3FC] whitespace-nowrap shrink-0"
+              className="inline-flex min-h-[40px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#38BDF8] px-3 py-2 text-xs font-semibold text-[#0C1322] hover:bg-[#7DD3FC] whitespace-nowrap shrink-0"
             >
-              <MapPin className="h-3.5 w-3.5 text-[#0B0A16]" aria-hidden="true" />
+              <MapPin className="h-3.5 w-3.5 text-[#0C1322]" aria-hidden="true" />
               <span>{ALL_MONITORED_CITIES.length} Cities</span>
             </a>
             <a
               href="#map-globe"
-              className="inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-white/12 bg-[#0B0A16] px-3 py-2 text-xs font-semibold text-[#E6EDF7] hover:bg-[#14163F] whitespace-nowrap shrink-0"
+              className="inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-xl border border-white/12 bg-[#0C1322] px-3 py-2 text-xs font-semibold text-[#E6EDF7] hover:bg-[#182947] whitespace-nowrap shrink-0"
             >
-              <Globe2 className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
+              <Globe2 className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
               <span>{t(lang, 'navMapGlobe')}</span>
             </a>
             <button
@@ -659,10 +663,10 @@ export function CityHeroCarousel({
               onClick={onRefresh}
               disabled={loading}
               aria-label={t(lang, 'refreshData')}
-              className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-white/12 bg-[#0B0A16] px-3 py-2 text-[#E6EDF7] hover:bg-[#14163F] disabled:opacity-50"
+              className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-white/12 bg-[#0C1322] px-3 py-2 text-[#E6EDF7] hover:bg-[#182947] disabled:opacity-50"
             >
               <RefreshCw
-                className={`h-3.5 w-3.5 text-[#67E8F9] ${loading ? 'animate-spin' : ''}`}
+                className={`h-3.5 w-3.5 text-[#38BDF8] ${loading ? 'animate-spin' : ''}`}
                 aria-hidden="true"
               />
             </button>
@@ -674,7 +678,7 @@ export function CityHeroCarousel({
       <div className="obsidian-surface space-y-2 rounded-2xl px-4 py-3 sm:px-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="mr-1.5 text-xs font-semibold text-[#A7A3C7]">
+            <span className="mr-1.5 text-xs font-semibold text-[#9FB0C7]">
               {lang === 'hi' ? 'भारत:' : 'India:'}
             </span>
             {QUICK_PICK_CITIES.map((city) => {
@@ -687,8 +691,8 @@ export function CityHeroCarousel({
                   aria-pressed={active}
                   className={`min-h-[30px] rounded-lg border px-2.5 py-0.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
                     active
-                      ? 'border-[#67E8F9] bg-[#67E8F9] text-[#0B0A16] font-semibold'
-                      : 'border-white/10 bg-[#0B0A16]/80 text-[#E6EDF7] hover:bg-[#14163F]'
+                      ? 'border-[#38BDF8] bg-[#38BDF8] text-[#0C1322] font-semibold'
+                      : 'border-white/10 bg-[#0C1322]/80 text-[#E6EDF7] hover:bg-[#182947]'
                   }`}
                 >
                   {city.name}
@@ -699,7 +703,7 @@ export function CityHeroCarousel({
 
           <a
             href="#all-cities"
-            className="inline-flex items-center gap-1 text-xs font-semibold text-[#67E8F9] hover:underline underline-offset-4 whitespace-nowrap shrink-0"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-[#38BDF8] hover:underline underline-offset-4 whitespace-nowrap shrink-0"
           >
             <span>
               {lang === 'hi'
@@ -711,7 +715,7 @@ export function CityHeroCarousel({
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5 border-t border-white/10 pt-2">
-          <span className="mr-1.5 text-xs font-semibold text-[#A7A3C7]">
+          <span className="mr-1.5 text-xs font-semibold text-[#9FB0C7]">
             {lang === 'hi' ? 'दुनिया:' : 'World:'}
           </span>
           {GLOBAL_QUICK_PICK_CITIES.map((city) => {
@@ -724,8 +728,8 @@ export function CityHeroCarousel({
                 aria-pressed={active}
                 className={`min-h-[30px] rounded-lg border px-2.5 py-0.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
                   active
-                    ? 'border-[#67E8F9] bg-[#67E8F9] text-[#0B0A16] font-semibold'
-                    : 'border-white/10 bg-[#0B0A16]/80 text-[#E6EDF7] hover:bg-[#14163F]'
+                    ? 'border-[#38BDF8] bg-[#38BDF8] text-[#0C1322] font-semibold'
+                    : 'border-white/10 bg-[#0C1322]/80 text-[#E6EDF7] hover:bg-[#182947]'
                 }`}
               >
                 {city.name}

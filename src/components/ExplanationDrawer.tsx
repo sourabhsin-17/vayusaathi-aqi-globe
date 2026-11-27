@@ -34,7 +34,7 @@ export function ExplanationFields({
   return (
     <div
       className={`mt-4 space-y-3 border-t pt-3.5 text-xs ${
-        isLight ? 'border-[#14163F]/15' : 'border-white/10'
+        isLight ? 'border-[#182947]/15' : 'border-white/10'
       }`}
     >
       {/* Highlight Summary Row */}
@@ -42,13 +42,13 @@ export function ExplanationFields({
         <div
           className={`rounded-xl border p-2.5 ${
             isLight
-              ? 'border-[#14163F]/15 bg-[#F4F0E6] text-[#14163F]'
-              : 'border-white/10 bg-[#0B0A16]/75 text-[#E6EDF7]'
+              ? 'border-[#182947]/15 bg-[#F4F0E6] text-[#182947]'
+              : 'border-white/10 bg-[#0C1322]/75 text-[#E6EDF7]'
           }`}
         >
           <span
             className={`block text-[10px] font-semibold uppercase tracking-wider ${
-              isLight ? 'text-[#14163F]/75' : 'text-[#67E8F9]'
+              isLight ? 'text-[#182947]/75' : 'text-[#38BDF8]'
             }`}
           >
             {t(lang, 'whenLabel')}
@@ -59,8 +59,8 @@ export function ExplanationFields({
         <div
           className={`rounded-xl border p-2.5 ${
             isLight
-              ? 'border-[#14163F]/15 bg-[#F4F0E6] text-[#14163F]'
-              : 'border-white/10 bg-[#0B0A16]/75 text-[#E6EDF7]'
+              ? 'border-[#182947]/15 bg-[#F4F0E6] text-[#182947]'
+              : 'border-white/10 bg-[#0C1322]/75 text-[#E6EDF7]'
           }`}
         >
           <span
@@ -77,48 +77,48 @@ export function ExplanationFields({
       {/* Concise Why, Who, Effort/Cost, Limitations */}
       <dl className="space-y-2 leading-relaxed">
         <div>
-          <dt className={`inline font-semibold ${isLight ? 'text-[#14163F]' : 'text-[#67E8F9]'}`}>
+          <dt className={`inline font-semibold ${isLight ? 'text-[#182947]' : 'text-[#38BDF8]'}`}>
             {t(lang, 'whyLabel')}:{' '}
           </dt>
-          <dd className={`inline ${isLight ? 'text-[#14163F]/85' : 'text-[#E6EDF7]/90'}`}>{why}</dd>
+          <dd className={`inline ${isLight ? 'text-[#182947]/85' : 'text-[#E6EDF7]/90'}`}>{why}</dd>
         </div>
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span>
-            <strong className={isLight ? 'text-[#14163F]/75' : 'text-[#A7A3C7]'}>
+            <strong className={isLight ? 'text-[#182947]/75' : 'text-[#9FB0C7]'}>
               {t(lang, 'whoLabel')}:
             </strong>{' '}
-            <span className={isLight ? 'text-[#14163F]' : 'text-[#E6EDF7]'}>{whoFor}</span>
+            <span className={isLight ? 'text-[#182947]' : 'text-[#E6EDF7]'}>{whoFor}</span>
           </span>
-          <span aria-hidden="true" className={isLight ? 'text-[#14163F]/35' : 'text-white/30'}>
+          <span aria-hidden="true" className={isLight ? 'text-[#182947]/35' : 'text-white/30'}>
             ·
           </span>
           <span>
-            <strong className={isLight ? 'text-[#14163F]/75' : 'text-[#A7A3C7]'}>
+            <strong className={isLight ? 'text-[#182947]/75' : 'text-[#9FB0C7]'}>
               {t(lang, 'effortLabel')}:
             </strong>{' '}
-            <span className={`font-semibold ${isLight ? 'text-[#14163F]' : 'text-[#E6EDF7]'}`}>
+            <span className={`font-semibold ${isLight ? 'text-[#182947]' : 'text-[#E6EDF7]'}`}>
               {effort}
             </span>
           </span>
-          <span aria-hidden="true" className={isLight ? 'text-[#14163F]/35' : 'text-white/30'}>
+          <span aria-hidden="true" className={isLight ? 'text-[#182947]/35' : 'text-white/30'}>
             ·
           </span>
           <span>
-            <strong className={isLight ? 'text-[#14163F]/75' : 'text-[#A7A3C7]'}>
+            <strong className={isLight ? 'text-[#182947]/75' : 'text-[#9FB0C7]'}>
               {t(lang, 'costLabel')}:
             </strong>{' '}
-            <span className={`font-semibold ${isLight ? 'text-[#14163F]' : 'text-[#E6EDF7]'}`}>
+            <span className={`font-semibold ${isLight ? 'text-[#182947]' : 'text-[#E6EDF7]'}`}>
               {cost}
             </span>
           </span>
         </div>
 
         <div>
-          <dt className={`inline font-semibold ${isLight ? 'text-[#14163F]/75' : 'text-[#A7A3C7]'}`}>
+          <dt className={`inline font-semibold ${isLight ? 'text-[#182947]/75' : 'text-[#9FB0C7]'}`}>
             {t(lang, 'limitsLabel')}:{' '}
           </dt>
-          <dd className={`inline ${isLight ? 'text-[#14163F]/80' : 'text-[#A7A3C7]'}`}>
+          <dd className={`inline ${isLight ? 'text-[#182947]/80' : 'text-[#9FB0C7]'}`}>
             {limitations}
           </dd>
         </div>
@@ -132,8 +132,8 @@ export function ExplanationFields({
             onClick={() => setOpen((prev) => !prev)}
             className={`inline-flex min-h-[34px] items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors ${
               isLight
-                ? 'border-[#14163F]/20 bg-[#F4F0E6] text-[#14163F] hover:bg-[#EAE3D5]'
-                : 'border-white/15 bg-white/[0.06] text-[#67E8F9] hover:bg-white/[0.12]'
+                ? 'border-[#182947]/20 bg-[#F4F0E6] text-[#182947] hover:bg-[#EAE3D5]'
+                : 'border-white/15 bg-white/[0.06] text-[#38BDF8] hover:bg-white/[0.12]'
             }`}
           >
             <span>{t(lang, 'howCalculated')}</span>
@@ -147,8 +147,8 @@ export function ExplanationFields({
             <div
               className={`mt-2 rounded-xl border p-3 text-xs font-mono-tabular leading-relaxed ${
                 isLight
-                  ? 'border-[#14163F]/15 bg-[#F4F0E6] text-[#14163F]'
-                  : 'border-white/10 bg-[#0B0A16] text-[#E6EDF7]/90'
+                  ? 'border-[#182947]/15 bg-[#F4F0E6] text-[#182947]'
+                  : 'border-white/10 bg-[#0C1322] text-[#E6EDF7]/90'
               }`}
             >
               {formulaDetail}

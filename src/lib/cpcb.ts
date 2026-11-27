@@ -127,12 +127,12 @@ export const CPCB_CATEGORY_STYLES: Record<CpcbCategoryKey, CategoryVisualStyle> 
     surfaceTint: 'bg-[#1D9E75]/10',
   },
   satisfactory: {
-    badgeBg: 'bg-[#67E8F9]/15',
-    badgeText: 'text-[#67E8F9]',
-    badgeBorder: 'border-[#67E8F9]/40',
-    accentHex: '#67E8F9',
+    badgeBg: 'bg-[#38BDF8]/15',
+    badgeText: 'text-[#38BDF8]',
+    badgeBorder: 'border-[#38BDF8]/40',
+    accentHex: '#38BDF8',
     barBg: 'bg-[#38BDF8]',
-    surfaceTint: 'bg-[#67E8F9]/10',
+    surfaceTint: 'bg-[#38BDF8]/10',
   },
   moderate: {
     badgeBg: 'bg-amber-400/15',

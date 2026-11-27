@@ -47,6 +47,7 @@ export function CityAqiDirectory({
   const [globalLookupSearched, setGlobalLookupSearched] = useState(false);
   const batchAbortRef = useRef<AbortController | null>(null);
   const searchAbortRef = useRef<AbortController | null>(null);
+  const attemptedIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowMs(Date.now()), 30000);
@@ -122,6 +123,8 @@ export function CityAqiDirectory({
       const controller = new AbortController();
       batchAbortRef.current = controller;
 
+      citiesToLoad.forEach((c) => attemptedIdsRef.current.add(c.id));
+
       setLoading(true);
       setError(null);
       try {
@@ -129,7 +132,7 @@ export function CityAqiDirectory({
           forceRefresh,
           signal: controller.signal,
         });
-        if (!controller.signal.aborted) {
+        if (!controller.signal.aborted && Object.keys(batch).length > 0) {
           setReadingsById((prev) => ({ ...prev, ...batch }));
         }
       } catch (err) {
@@ -156,13 +159,16 @@ export function CityAqiDirectory({
         ? filteredCities.slice(0, 36)
         : filteredCities.slice(0, 24);
 
-    const hasMissing = targetList.some((c) => !readingsById[c.id]);
-    if (hasMissing) {
-      void loadRegionStations(targetList, false);
+    const missingCities = targetList.filter(
+      (c) => !readingsById[c.id] && !attemptedIdsRef.current.has(c.id)
+    );
+    if (missingCities.length > 0) {
+      void loadRegionStations(missingCities, false);
     }
   }, [regionFilter, searchText, filteredCities, readingsById, loadRegionStations]);
 
   const handleLoadAllVisible = () => {
+    filteredCities.forEach((c) => attemptedIdsRef.current.delete(c.id));
     void loadRegionStations(filteredCities, true);
   };
 
@@ -233,11 +239,11 @@ export function CityAqiDirectory({
       {/* Section Header */}
       <div className="flex flex-col gap-4 border-b border-white/10 pb-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
-          <p className="font-mono-tabular text-[11px] font-semibold uppercase tracking-wider text-[#67E8F9]">
+          <p className="font-mono-tabular text-[11px] font-semibold uppercase tracking-wider text-[#38BDF8]">
             02. {lang === 'hi' ? 'वैश्विक और भारतीय AQI नेटवर्क' : 'Global & India Airshed Directory'}
           </p>
           <div className="flex items-center gap-2">
-            <Radio className="h-5 w-5 text-[#67E8F9]" aria-hidden="true" />
+            <Radio className="h-5 w-5 text-[#38BDF8]" aria-hidden="true" />
             <h2
               id="all-cities-heading"
               className="text-2xl font-semibold tracking-tight text-[#E6EDF7] font-display"
@@ -247,7 +253,7 @@ export function CityAqiDirectory({
                 : `Worldwide & All-India AQI Meter Network (${ALL_MONITORED_CITIES.length} Cities)`}
             </h2>
           </div>
-          <p className="text-xs text-[#A7A3C7]">
+          <p className="text-xs text-[#9FB0C7]">
             {lang === 'hi'
               ? 'CPCB, EPA, EEA, AirKorea और Open-Meteo (CAMS/ECMWF) द्वारा आच्छादित शहर। किसी भी शहर पर क्लिक करके लाइव पूर्वानुमान और 3D ग्लोब देखें।'
               : 'Live Open-Meteo (CAMS/ECMWF) telemetry across global capitals, coastal hubs, and Indian CAAQMS stations. Search any town on Earth.'}
@@ -258,10 +264,10 @@ export function CityAqiDirectory({
           type="button"
           onClick={handleLoadAllVisible}
           disabled={loading || filteredCities.length === 0}
-          className="inline-flex min-h-[42px] items-center gap-2 rounded-xl bg-[#67E8F9] px-4 py-2 text-xs font-semibold text-[#0B0A16] hover:bg-[#A5F3FC] disabled:opacity-60 whitespace-nowrap shrink-0"
+          className="inline-flex min-h-[42px] items-center gap-2 rounded-xl bg-[#38BDF8] px-4 py-2 text-xs font-semibold text-[#0C1322] hover:bg-[#7DD3FC] disabled:opacity-60 whitespace-nowrap shrink-0"
         >
           <RefreshCw
-            className={`h-3.5 w-3.5 text-[#0B0A16] ${loading ? 'animate-spin' : ''}`}
+            className={`h-3.5 w-3.5 text-[#0C1322] ${loading ? 'animate-spin' : ''}`}
             aria-hidden="true"
           />
           <span>
@@ -283,7 +289,7 @@ export function CityAqiDirectory({
           <div
             role="group"
             aria-label="Geographic scope"
-            className="inline-flex items-center rounded-xl border border-white/12 bg-[#0B0A16] p-1 self-start"
+            className="inline-flex items-center rounded-xl border border-white/12 bg-[#0C1322] p-1 self-start"
           >
             {([
               { key: 'all' as const, labelEn: `World & India (${ALL_MONITORED_CITIES.length})`, labelHi: `दुनिया व भारत (${ALL_MONITORED_CITIES.length})` },
@@ -296,8 +302,8 @@ export function CityAqiDirectory({
                 onClick={() => handleChangeScope(item.key)}
                 className={`min-h-[34px] rounded-lg px-3 py-1 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
                   scopeTab === item.key
-                    ? 'bg-[#14163F] text-[#67E8F9]'
-                    : 'text-[#A7A3C7] hover:text-[#E6EDF7]'
+                    ? 'bg-[#182947] text-[#38BDF8]'
+                    : 'text-[#9FB0C7] hover:text-[#E6EDF7]'
                 }`}
               >
                 {lang === 'hi' ? item.labelHi : item.labelEn}
@@ -308,7 +314,7 @@ export function CityAqiDirectory({
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="relative min-w-[240px] flex-1 sm:flex-initial">
               <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#A7A3C7]"
+                className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9FB0C7]"
                 aria-hidden="true"
               />
               <input
@@ -325,7 +331,7 @@ export function CityAqiDirectory({
                     : 'Filter city, country, or region...'
                 }
                 aria-label="Filter monitored cities"
-                className="min-h-[40px] w-full rounded-xl border border-white/12 bg-[#0B0A16] pl-8 pr-9 text-xs text-[#E6EDF7] placeholder:text-[#A7A3C7]/70 focus:border-[#67E8F9] focus:bg-[#14122E] focus:outline-none"
+                className="min-h-[40px] w-full rounded-xl border border-white/12 bg-[#0C1322] pl-8 pr-9 text-xs text-[#E6EDF7] placeholder:text-[#9FB0C7]/70 focus:border-[#38BDF8] focus:bg-[#142138] focus:outline-none"
               />
               {searchText ? (
                 <button
@@ -336,7 +342,7 @@ export function CityAqiDirectory({
                     setGlobalLookupSearched(false);
                   }}
                   aria-label={lang === 'hi' ? 'फ़िल्टर साफ़ करें' : 'Clear city filter'}
-                  className="absolute right-1.5 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#A7A3C7] hover:bg-white/10 hover:text-white"
+                  className="absolute right-1.5 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-[#9FB0C7] hover:bg-white/10 hover:text-white"
                 >
                   <X className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
@@ -348,7 +354,7 @@ export function CityAqiDirectory({
                 type="button"
                 onClick={() => void handleGlobalSearch()}
                 disabled={globalLookupLoading}
-                className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl border border-[#67E8F9]/45 bg-[#14163F] px-3 py-1.5 text-xs font-semibold text-[#67E8F9] hover:bg-[#1C1F52] whitespace-nowrap shrink-0"
+                className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl border border-[#38BDF8]/45 bg-[#182947] px-3 py-1.5 text-xs font-semibold text-[#38BDF8] hover:bg-[#1C1F52] whitespace-nowrap shrink-0"
               >
                 <Globe className="h-3.5 w-3.5" aria-hidden="true" />
                 <span>
@@ -364,12 +370,12 @@ export function CityAqiDirectory({
             ) : null}
 
             <div className="inline-flex items-center gap-1.5">
-              <ArrowUpDown className="h-3.5 w-3.5 text-[#A7A3C7]" aria-hidden="true" />
+              <ArrowUpDown className="h-3.5 w-3.5 text-[#9FB0C7]" aria-hidden="true" />
               <select
                 aria-label="Sort cities"
                 value={sortMode}
                 onChange={(e) => setSortMode(e.target.value as SortMode)}
-                className="min-h-[38px] rounded-xl border border-white/12 bg-[#0B0A16] px-2.5 text-xs font-medium text-[#E6EDF7]"
+                className="min-h-[38px] rounded-xl border border-white/12 bg-[#0C1322] px-2.5 text-xs font-medium text-[#E6EDF7]"
               >
                 <option value="name">
                   {lang === 'hi' ? 'नाम (A–Z)' : 'Sort: Name (A–Z)'}
@@ -419,8 +425,8 @@ export function CityAqiDirectory({
                 }}
                 className={`min-h-[34px] rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
                   active
-                    ? 'border-[#67E8F9] bg-[#67E8F9] text-[#0B0A16]'
-                    : 'border-white/10 bg-[#0B0A16]/80 text-[#E6EDF7] hover:bg-[#14163F]'
+                    ? 'border-[#38BDF8] bg-[#38BDF8] text-[#0C1322]'
+                    : 'border-white/10 bg-[#0C1322]/80 text-[#E6EDF7] hover:bg-[#182947]'
                 }`}
               >
                 {label}
@@ -432,7 +438,7 @@ export function CityAqiDirectory({
 
       {/* Live Worldwide Geocoding Lookup Results */}
       {globalLookupSearched && globalLookupResults.length === 0 && !globalLookupLoading ? (
-        <p role="status" className="rounded-xl border border-white/10 bg-[#0B0A16] px-4 py-3 text-xs text-[#A7A3C7]">
+        <p role="status" className="rounded-xl border border-white/10 bg-[#0C1322] px-4 py-3 text-xs text-[#9FB0C7]">
           {lang === 'hi'
             ? `"${searchText.trim()}" के लिए Open-Meteo वैश्विक खोज में कोई परिणाम नहीं मिला।`
             : `No locations found worldwide for "${searchText.trim()}".`}
@@ -454,13 +460,13 @@ export function CityAqiDirectory({
                   onSelectLocation(hit);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className="flex min-h-[44px] items-center justify-between gap-2 rounded-xl border border-white/12 bg-[#0B0A16] px-3.5 py-2.5 text-left text-xs hover:border-[#67E8F9]"
+                className="flex min-h-[44px] items-center justify-between gap-2 rounded-xl border border-white/12 bg-[#0C1322] px-3.5 py-2.5 text-left text-xs hover:border-[#38BDF8]"
               >
                 <div className="min-w-0">
                   <p className="truncate font-bold text-[#E6EDF7]">{hit.name}</p>
-                  <p className="truncate text-[#A7A3C7]">{hit.state}</p>
+                  <p className="truncate text-[#9FB0C7]">{hit.state}</p>
                 </div>
-                <span className="font-mono-tabular text-[11px] font-semibold text-[#67E8F9] shrink-0">
+                <span className="font-mono-tabular text-[11px] font-semibold text-[#38BDF8] shrink-0">
                   Inspect →
                 </span>
               </button>
@@ -479,7 +485,7 @@ export function CityAqiDirectory({
           <button
             type="button"
             onClick={handleLoadAllVisible}
-            className="font-semibold text-[#67E8F9] underline hover:no-underline"
+            className="font-semibold text-[#38BDF8] underline hover:no-underline"
           >
             {lang === 'hi' ? 'पुनः प्रयास करें' : 'Retry live fetch'}
           </button>
@@ -488,7 +494,7 @@ export function CityAqiDirectory({
 
       {/* Cities Grid */}
       {filteredCities.length === 0 ? (
-        <div className="rounded-2xl border border-white/12 bg-[#0B0A16]/80 p-6 text-center space-y-3 text-xs text-[#A7A3C7]">
+        <div className="rounded-2xl border border-white/12 bg-[#0C1322]/80 p-6 text-center space-y-3 text-xs text-[#9FB0C7]">
           <p>
             {lang === 'hi'
               ? 'क्युुरेटेड सूची में कोई मेल खाने वाला शहर नहीं मिला।'
@@ -499,9 +505,9 @@ export function CityAqiDirectory({
               type="button"
               onClick={() => void handleGlobalSearch()}
               disabled={globalLookupLoading}
-              className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl bg-[#67E8F9] px-4 py-2 text-xs font-semibold text-[#0B0A16] hover:bg-[#A5F3FC]"
+              className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl bg-[#38BDF8] px-4 py-2 text-xs font-semibold text-[#0C1322] hover:bg-[#7DD3FC]"
             >
-              <Globe className="h-3.5 w-3.5 text-[#0B0A16]" aria-hidden="true" />
+              <Globe className="h-3.5 w-3.5 text-[#0C1322]" aria-hidden="true" />
               <span>
                 {lang === 'hi'
                   ? `दुनिया भर में "${searchText.trim()}" खोजें`
@@ -542,10 +548,10 @@ export function CityAqiDirectory({
                 }}
                 className={`flex flex-col justify-between rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 ${
                   isSelected
-                    ? 'border-[#67E8F9] bg-[#14163F] text-[#E6EDF7] shadow-[0_0_24px_-8px_rgba(103,232,249,0.35)]'
+                    ? 'border-[#38BDF8] bg-[#182947] text-[#E6EDF7] shadow-[0_0_24px_-8px_rgba(103,232,249,0.35)]'
                     : reading && cpcbStyle
-                    ? 'border-white/12 bg-[#14122E]/85 hover:border-[#67E8F9]/60'
-                    : 'border-white/10 bg-[#0B0A16]/80 hover:border-[#67E8F9]/50 hover:bg-[#14122E]'
+                    ? 'border-white/12 bg-[#142138]/85 hover:border-[#38BDF8]/60'
+                    : 'border-white/10 bg-[#0C1322]/80 hover:border-[#38BDF8]/50 hover:bg-[#142138]'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2.5">
@@ -560,7 +566,7 @@ export function CityAqiDirectory({
                       <p className="truncate text-sm font-bold text-[#E6EDF7]">
                         {city.name}
                       </p>
-                      <p className="truncate text-xs text-[#A7A3C7]">
+                      <p className="truncate text-xs text-[#9FB0C7]">
                         {city.state}
                       </p>
                       {city.capitalLabel ? (
@@ -575,19 +581,19 @@ export function CityAqiDirectory({
                     <div
                       className={`rounded-xl px-2.5 py-1 text-right shrink-0 border ${
                         isSelected
-                          ? 'border-[#67E8F9]/40 bg-[#0B0A16] text-[#67E8F9]'
-                          : 'border-white/10 bg-[#0B0A16] text-[#67E8F9]'
+                          ? 'border-[#38BDF8]/40 bg-[#0C1322] text-[#38BDF8]'
+                          : 'border-white/10 bg-[#0C1322] text-[#38BDF8]'
                       }`}
                     >
                       <p className="font-mono-tabular text-base font-extrabold leading-none">
                         {reading.usAqi}
                       </p>
-                      <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-[#A7A3C7]">
+                      <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-[#9FB0C7]">
                         AQI
                       </p>
                     </div>
                   ) : (
-                    <span className="text-[11px] font-semibold shrink-0 text-[#67E8F9]">
+                    <span className="text-[11px] font-semibold shrink-0 text-[#38BDF8]">
                       {lang === 'hi' ? 'चुनें →' : 'Inspect →'}
                     </span>
                   )}
@@ -608,12 +614,12 @@ export function CityAqiDirectory({
                           PM2.5: <strong>{reading.pm25}</strong> µg/m³
                         </span>
                       </div>
-                      <p className="truncate text-[10px] font-mono-tabular text-[#A7A3C7]">
+                      <p className="truncate text-[10px] font-mono-tabular text-[#9FB0C7]">
                         {reading.sourceName} · {formatFreshnessLabel(reading.fetchedAtIso, lang, nowMs)}
                       </p>
                     </div>
                   ) : (
-                    <p className="truncate text-[#A7A3C7]">
+                    <p className="truncate text-[#9FB0C7]">
                       {city.stationNetwork}
                     </p>
                   )}

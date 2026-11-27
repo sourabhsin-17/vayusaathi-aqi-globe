@@ -23,6 +23,7 @@ import {
   buildFallbackCoordinateLocation,
   evaluateHealthWarning,
   getNotificationPermissionState,
+  hasSentHealthNotification,
   requestHealthNotificationPermission,
   resolveExactLocationFromCoords,
   sendBrowserHealthNotification,
@@ -448,7 +449,7 @@ export default function App() {
     <ErrorBoundary>
       <MotionConfig reducedMotion="user">
         <div
-          className={`relative min-h-screen overflow-x-hidden bg-[#06050E] bg-dot-grid section-electric-glow text-[#E6EDF7] flex flex-col ${
+          className={`relative min-h-screen overflow-x-hidden bg-[#070B12] bg-dot-grid section-electric-glow text-[#E6EDF7] flex flex-col ${
             easyRead ? 'easy-read' : ''
           }`}
         >
@@ -469,7 +470,7 @@ export default function App() {
                       href="https://developers.google.com/maps/ai/ai-studio?utm_campaign=gmp_mcp_codeassist_v1_aistudio#quota_exceeded_errors"
                       target="_blank"
                       rel="noreferrer"
-                      className="font-semibold underline text-[#67E8F9] hover:text-white"
+                      className="font-semibold underline text-[#38BDF8] hover:text-white"
                     >
                       {lang === 'hi' ? 'विवरण देखें' : 'Learn about Maps quota & billing'}
                     </a>
@@ -488,7 +489,7 @@ export default function App() {
           ) : null}
 
           {/* Strict 3-Zone Top Bar Contract + Accessible Mobile Nav Strip */}
-          <header className="sticky top-0 z-40 border-b border-white/10 bg-[#06050E]/90 backdrop-blur-md">
+          <header className="sticky top-0 z-40 border-b border-white/10 bg-[#070B12]/90 backdrop-blur-md">
             <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:gap-8 sm:px-6 sm:py-3.5">
               {/* Zone 1: Single clean wordmark */}
               <a
@@ -506,26 +507,26 @@ export default function App() {
               {view === 'dashboard' ? (
                 <nav
                   aria-label="Dashboard sections"
-                  className="hidden md:flex items-center gap-6 text-sm font-medium text-[#A7A3C7]"
+                  className="hidden md:flex items-center gap-6 text-sm font-medium text-[#9FB0C7]"
                 >
-                  <a href="#overview" className="hover:text-[#67E8F9] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0">
+                  <a href="#overview" className="hover:text-[#38BDF8] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0">
                     {t(lang, 'navOverview')}
                   </a>
-                  <a href="#briefing" className="hover:text-[#67E8F9] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0">
+                  <a href="#briefing" className="hover:text-[#38BDF8] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0">
                     {lang === 'hi' ? 'ब्रीफिंग डेक' : 'Briefing'}
                   </a>
-                  <a href="#all-cities" className="hover:text-[#67E8F9] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0">
+                  <a href="#all-cities" className="hover:text-[#38BDF8] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0">
                     {t(lang, 'navAllCities')}
                   </a>
-                  <a href="#map-globe" className="hover:text-[#67E8F9] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0">
+                  <a href="#map-globe" className="hover:text-[#38BDF8] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0">
                     {t(lang, 'navMapGlobe')}
                   </a>
-                  <a href="#assistant" className="hover:text-[#67E8F9] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0">
+                  <a href="#assistant" className="hover:text-[#38BDF8] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0">
                     {t(lang, 'navAssistant')}
                   </a>
                 </nav>
               ) : (
-                <nav aria-label="Setup navigation" className="hidden md:flex items-center gap-6 text-sm font-medium text-[#A7A3C7]">
+                <nav aria-label="Setup navigation" className="hidden md:flex items-center gap-6 text-sm font-medium text-[#9FB0C7]">
                   <span className="whitespace-nowrap shrink-0">
                     {lang === 'hi'
                       ? 'वैश्विक और भारतीय वायु सुरक्षा सेटअप'
@@ -539,7 +540,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setView('setup')}
-                  className="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-[#67E8F9] px-4 py-2 text-xs font-bold text-[#0B0A16] hover:bg-[#9CE7E9] transition-colors whitespace-nowrap shrink-0"
+                  className="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-[#38BDF8] px-4 py-2 text-xs font-bold text-[#0C1322] hover:bg-[#7DD3FC] transition-colors whitespace-nowrap shrink-0"
                 >
                   <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
                   <span>{t(lang, 'editSetup')}</span>
@@ -548,7 +549,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleCompleteSetup}
-                  className="inline-flex min-h-[40px] items-center rounded-xl bg-[#67E8F9] px-4 py-2 text-xs font-bold text-[#0B0A16] hover:bg-[#9CE7E9] transition-colors whitespace-nowrap shrink-0"
+                  className="inline-flex min-h-[40px] items-center rounded-xl bg-[#38BDF8] px-4 py-2 text-xs font-bold text-[#0C1322] hover:bg-[#7DD3FC] transition-colors whitespace-nowrap shrink-0"
                 >
                   {t(lang, 'viewDashboard')}
                 </button>
@@ -558,7 +559,7 @@ export default function App() {
             {view === 'dashboard' ? (
               <nav
                 aria-label="Mobile dashboard sections"
-                className="flex md:hidden items-center gap-1.5 overflow-x-auto border-t border-white/10 px-4 py-2 text-xs font-medium text-[#A7A3C7]"
+                className="flex md:hidden items-center gap-1.5 overflow-x-auto border-t border-white/10 px-4 py-2 text-xs font-medium text-[#9FB0C7]"
               >
                 {[
                   { href: '#overview', label: t(lang, 'navOverview') },
@@ -570,7 +571,7 @@ export default function App() {
                   <a
                     key={item.href}
                     href={item.href}
-                    className="inline-flex min-h-[36px] items-center rounded-lg border border-white/10 bg-[#0B0A16] px-3 py-1 text-[#E6EDF7] hover:border-[#67E8F9] hover:text-[#67E8F9] whitespace-nowrap shrink-0"
+                    className="inline-flex min-h-[36px] items-center rounded-lg border border-white/10 bg-[#0C1322] px-3 py-1 text-[#E6EDF7] hover:border-[#38BDF8] hover:text-[#38BDF8] whitespace-nowrap shrink-0"
                   >
                     {item.label}
                   </a>
@@ -591,6 +592,31 @@ export default function App() {
             />
           ) : (
             <div className="space-y-8">
+              {/* INSTANT GPS AREA LOCK & HEALTH ISSUE WARNING BANNER */}
+              <LiveGpsHealthBanner
+                location={profile.location}
+                snapshot={snapshot}
+                aqLoading={aqLoading}
+                gpsStatus={gpsStatus}
+                gpsStatusNote={gpsStatusNote}
+                healthWarning={healthWarning}
+                warningDismissed={
+                  activeWarningKey !== null && warningDismissedKey === activeWarningKey
+                }
+                browserAlertSent={
+                  activeWarningKey !== null &&
+                  (browserAlertSentKey === activeWarningKey ||
+                    (snapshot !== null &&
+                      healthWarning !== null &&
+                      hasSentHealthNotification(snapshot.location.id, healthWarning.severity)))
+                }
+                notificationPermission={notificationPermission}
+                onDetectGps={() => detectAndLockGps(false)}
+                onEnableNotifications={() => void handleEnableNotifications()}
+                onDismissWarning={() => setWarningDismissedKey(activeWarningKey)}
+                lang={lang}
+              />
+
               {/* HERO CITY PHOTO SLIDESHOW & GLOBAL COMMAND PANEL */}
               <CityHeroCarousel
                 profile={profile}
@@ -598,9 +624,7 @@ export default function App() {
                 loading={aqLoading}
                 easyRead={easyRead}
                 onToggleEasyRead={() => setEasyRead((p) => !p)}
-                onSelectLocation={(loc) =>
-                  setProfile((prev) => ({ ...prev, location: loc }))
-                }
+                onSelectLocation={handleSelectLocation}
                 onSelectPersona={handleSelectPersona}
                 onChangeLanguage={(nextLang) =>
                   setProfile((prev) => ({ ...prev, language: nextLang }))
@@ -630,9 +654,7 @@ export default function App() {
               {/* 02. WORLDWIDE & INDIA 125+ CITIES DIRECTORY */}
               <CityAqiDirectory
                 selectedLocation={profile.location}
-                onSelectLocation={(loc) =>
-                  setProfile((prev) => ({ ...prev, location: loc }))
-                }
+                onSelectLocation={handleSelectLocation}
                 lang={lang}
               />
 
@@ -640,9 +662,7 @@ export default function App() {
               <LocationExplorer
                 selectedLocation={profile.location}
                 snapshot={snapshot}
-                onSelectLocation={(loc) =>
-                  setProfile((prev) => ({ ...prev, location: loc }))
-                }
+                onSelectLocation={handleSelectLocation}
                 lang={lang}
               />
 
@@ -664,8 +684,8 @@ export default function App() {
           )}
         </main>
 
-        <footer className="relative z-10 border-t border-white/10 bg-[#0B0A16]">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-5 text-xs text-[#A7A3C7] sm:px-6">
+        <footer className="relative z-10 border-t border-white/10 bg-[#0C1322]">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-5 text-xs text-[#9FB0C7] sm:px-6">
             <span>
               <strong className="font-display text-[#E6EDF7]">VayuSaathi</strong> · {t(lang, 'generalGuidanceNote')}
             </span>

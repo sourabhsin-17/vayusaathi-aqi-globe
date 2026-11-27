@@ -86,9 +86,9 @@ function ActiveLocationMarker({
         title={`${location.name} (${location.latitude.toFixed(2)}, ${location.longitude.toFixed(2)})`}
       >
         <Pin
-          background="#14163F"
-          borderColor="#67E8F9"
-          glyphColor="#67E8F9"
+          background="#182947"
+          borderColor="#38BDF8"
+          glyphColor="#38BDF8"
           scale={1.25}
         />
       </AdvancedMarker>
@@ -98,7 +98,7 @@ function ActiveLocationMarker({
             <p className="text-xs font-bold">{location.name}</p>
             <p className="text-[11px] text-stone-600">{location.state}</p>
             {snapshot && snapshot.location.id === location.id ? (
-              <p className="text-[11px] font-semibold text-[#14163F] font-mono-tabular">
+              <p className="text-[11px] font-semibold text-[#182947] font-mono-tabular">
                 US AQI {snapshot.current.usAqi} · PM2.5 {snapshot.current.pm25} µg/m³
               </p>
             ) : (
@@ -149,7 +149,7 @@ function MapStatusOverlay({ lang }: { lang: Language }) {
     return (
       <div
         role="alert"
-        className="absolute inset-0 z-10 flex items-center justify-center bg-[#06050E]/95 p-6 text-center"
+        className="absolute inset-0 z-10 flex items-center justify-center bg-[#070B12]/95 p-6 text-center"
       >
         <div className="max-w-md space-y-2">
           <MapPin className="mx-auto h-6 w-6 text-amber-300" aria-hidden="true" />
@@ -158,7 +158,7 @@ function MapStatusOverlay({ lang }: { lang: Language }) {
               ? 'Google Maps लोड नहीं हो सका'
               : 'Unable to load Google Maps'}
           </p>
-          <p className="text-xs text-[#A7A3C7]">
+          <p className="text-xs text-[#9FB0C7]">
             {lang === 'hi'
               ? 'कृपया API कुंजी या कोटा स्थिति जांचें। आप अभी भी 3D ग्लोब का उपयोग कर सकते हैं।'
               : 'Please verify your Google Maps key or quota status. You can continue using the 3D Interactive Globe.'}
@@ -209,15 +209,15 @@ export function InteractiveMapPanel({
 
   if (!apiKey) {
     return (
-      <div className="flex h-[440px] items-center justify-center rounded-xl border border-white/12 bg-[#0B0A16] p-6 text-center">
+      <div className="flex h-[440px] items-center justify-center rounded-xl border border-white/12 bg-[#0C1322] p-6 text-center">
         <div className="max-w-md space-y-2">
-          <MapPin className="mx-auto h-6 w-6 text-[#67E8F9]" aria-hidden="true" />
+          <MapPin className="mx-auto h-6 w-6 text-[#38BDF8]" aria-hidden="true" />
           <p className="text-sm font-semibold text-[#E6EDF7]">
             {lang === 'hi'
               ? 'Google Maps API कुंजी उपलब्ध नहीं है'
               : 'Google Maps API key not configured'}
           </p>
-          <p className="text-xs text-[#A7A3C7]">
+          <p className="text-xs text-[#9FB0C7]">
             {lang === 'hi'
               ? 'इंटरैक्टिव Google मानचित्र देखने के लिए Google Maps सेटअप पूरा करें।'
               : 'Complete Google Maps setup to view the scrollable street & satellite map.'}
@@ -232,8 +232,8 @@ export function InteractiveMapPanel({
       {/* Map Layer & Action Strip */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#A7A3C7] mr-1">
-            <Layers className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#9FB0C7] mr-1">
+            <Layers className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
             <span>{lang === 'hi' ? 'दृश्य:' : 'Layer:'}</span>
           </span>
           {(['roadmap', 'hybrid', 'satellite', 'terrain'] as MapTypeOption[]).map((mt) => (
@@ -244,8 +244,8 @@ export function InteractiveMapPanel({
               aria-pressed={mapTypeId === mt}
               className={`min-h-[32px] rounded-md border px-2.5 py-1 text-xs font-medium capitalize transition-colors whitespace-nowrap shrink-0 ${
                 mapTypeId === mt
-                  ? 'border-[#67E8F9] bg-[#67E8F9] text-[#0B0A16] font-semibold'
-                  : 'border-white/12 bg-[#0B0A16] text-[#E6EDF7] hover:bg-[#14163F]'
+                  ? 'border-[#38BDF8] bg-[#38BDF8] text-[#0C1322] font-semibold'
+                  : 'border-white/12 bg-[#0C1322] text-[#E6EDF7] hover:bg-[#182947]'
               }`}
             >
               {mt}
@@ -257,18 +257,18 @@ export function InteractiveMapPanel({
           <button
             type="button"
             onClick={() => setRecenterTrigger((n) => n + 1)}
-            className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg border border-white/12 bg-[#0B0A16] px-3 py-1.5 text-xs font-semibold text-[#E6EDF7] hover:bg-[#14163F] whitespace-nowrap shrink-0"
+            className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg border border-white/12 bg-[#0C1322] px-3 py-1.5 text-xs font-semibold text-[#E6EDF7] hover:bg-[#182947] whitespace-nowrap shrink-0"
           >
-            <Crosshair className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
+            <Crosshair className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
             <span>{lang === 'hi' ? 'केंद्रित करें' : 'Center Pin'}</span>
           </button>
           <button
             type="button"
             onClick={onDetectGps}
             disabled={isLocating}
-            className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg bg-[#67E8F9] px-3 py-1.5 text-xs font-semibold text-[#0B0A16] hover:bg-[#A5F3FC] disabled:opacity-60 whitespace-nowrap shrink-0"
+            className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg bg-[#38BDF8] px-3 py-1.5 text-xs font-semibold text-[#0C1322] hover:bg-[#7DD3FC] disabled:opacity-60 whitespace-nowrap shrink-0"
           >
-            <LocateFixed className="h-3.5 w-3.5 text-[#0B0A16]" aria-hidden="true" />
+            <LocateFixed className="h-3.5 w-3.5 text-[#0C1322]" aria-hidden="true" />
             <span>
               {isLocating
                 ? lang === 'hi'
@@ -284,7 +284,7 @@ export function InteractiveMapPanel({
 
       {/* World Region Quick-Jump Strip */}
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-[11px] font-semibold text-[#A7A3C7] mr-1">
+        <span className="text-[11px] font-semibold text-[#9FB0C7] mr-1">
           {lang === 'hi' ? 'क्षेत्र देखें:' : 'Fly map to:'}
         </span>
         {CONTINENT_VIEWS.map((cv) => (
@@ -299,7 +299,7 @@ export function InteractiveMapPanel({
                 seq: (prev?.seq ?? 0) + 1,
               }))
             }
-            className="min-h-[28px] rounded border border-white/12 bg-[#0B0A16] px-2 py-0.5 text-[11px] font-medium text-[#E6EDF7] hover:border-[#67E8F9] hover:bg-[#14163F] whitespace-nowrap shrink-0"
+            className="min-h-[28px] rounded border border-white/12 bg-[#0C1322] px-2 py-0.5 text-[11px] font-medium text-[#E6EDF7] hover:border-[#38BDF8] hover:bg-[#182947] whitespace-nowrap shrink-0"
           >
             {lang === 'hi' ? cv.labelHi : cv.labelEn}
           </button>
@@ -307,7 +307,7 @@ export function InteractiveMapPanel({
       </div>
 
       {/* Scrollable Worldwide Interactive Google Map */}
-      <div className="relative h-[440px] w-full overflow-hidden rounded-xl border border-white/15 bg-[#06050E]">
+      <div className="relative h-[440px] w-full overflow-hidden rounded-xl border border-white/15 bg-[#070B12]">
         <APIProvider
           apiKey={apiKey}
           libraries={['marker']}
@@ -349,7 +349,7 @@ export function InteractiveMapPanel({
         </APIProvider>
       </div>
 
-      <p className="text-xs text-[#A7A3C7]">
+      <p className="text-xs text-[#9FB0C7]">
         {lang === 'hi'
           ? 'माउस व्हील या दो उंगलियों से ज़ूम करें, खींचकर दुनिया भर में स्क्रॉल करें, या किसी भी बिंदु पर क्लिक करके वहां का लाइव डेटा देखें।'
           : `Scroll to zoom, drag across the globe, or click any of the ${ALL_MONITORED_CITIES.length} pins (or any spot on Earth) for live air quality.`}

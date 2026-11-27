@@ -7,12 +7,12 @@ import {
   detectPromptInjection,
   householdProfileSchema,
   sanitizeUserText,
-} from './validators.ts';
+} from './validators';
 import {
   calculateActivityShiftImpact,
   calculateCommuteShiftImpact,
   calculateRequiredCadr,
-} from './impactFormulas.ts';
+} from './impactFormulas';
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-4-hydrogen';
 const GEMINI_TIMEOUT_MS = 22000;
@@ -65,9 +65,9 @@ export const recommendationRequestSchema = z.object({
       co: z.number().nullable(),
     }),
     weather: z.object({
-      temperatureC: z.number(),
-      humidityPct: z.number(),
-      windSpeedKmh: z.number(),
+      temperatureC: z.number().nullable(),
+      humidityPct: z.number().nullable(),
+      windSpeedKmh: z.number().nullable(),
     }),
     cpcb: z.object({
       categoryKey: z.string(),

@@ -72,10 +72,10 @@ export interface PollutantReadings {
 }
 
 export interface WeatherReadings {
-  temperatureC: number;
+  temperatureC: number | null;
   apparentTemperatureC?: number | null;
-  humidityPct: number;
-  windSpeedKmh: number;
+  humidityPct: number | null;
+  windSpeedKmh: number | null;
   windGustsKmh?: number | null;
   precipitationMm?: number | null;
   weatherCode?: number | null;

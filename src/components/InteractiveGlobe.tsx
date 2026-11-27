@@ -13,6 +13,8 @@ import {
   Play,
   RotateCcw,
   Sun,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import { ALL_MONITORED_CITIES } from '../lib/aqiCities';
 import { CPCB_CATEGORY_STYLES } from '../lib/cpcb';
@@ -151,8 +153,8 @@ export function InteractiveGlobe({
   );
   const [autoSpin, setAutoSpin] = useState(() => !prefersReducedMotion);
   const [showClouds, setShowClouds] = useState(true);
-  const [showGrid, setShowGrid] = useState(true);
-  const [atlasLighting, setAtlasLighting] = useState(false);
+  const [showGrid, setShowGrid] = useState(false);
+  const [utcSunMode, setUtcSunMode] = useState(false);
   const [hudCollapsed, setHudCollapsed] = useState(false);
   const [hoverCityName, setHoverCityName] = useState<string | null>(null);
   const [webglUnavailable, setWebglUnavailable] = useState(false);
@@ -171,10 +173,18 @@ export function InteractiveGlobe({
   const flyToCoordsTriggerRef = useRef<((lat: number, lng: number, dist: number) => void) | null>(
     null
   );
+  const zoomTriggerRef = useRef<((factor: number) => void) | null>(null);
   const cloudToggleTriggerRef = useRef<((visible: boolean) => void) | null>(null);
   const gridToggleTriggerRef = useRef<((visible: boolean) => void) | null>(null);
-  const lightingToggleTriggerRef = useRef<((atlasBright: boolean) => void) | null>(null);
+  const lightingToggleTriggerRef = useRef<((useUtcSun: boolean) => void) | null>(null);
   const beaconColorTriggerRef = useRef<((hex: string) => void) | null>(null);
+  const requestRenderRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    if (autoSpin) {
+      requestRenderRef.current?.();
+    }
+  }, [autoSpin]);
 
   useEffect(() => {
     focusLocationTriggerRef.current?.();
@@ -189,12 +199,12 @@ export function InteractiveGlobe({
   }, [showGrid]);
 
   useEffect(() => {
-    lightingToggleTriggerRef.current?.(atlasLighting);
-  }, [atlasLighting]);
+    lightingToggleTriggerRef.current?.(utcSunMode);
+  }, [utcSunMode]);
 
   useEffect(() => {
     if (!snapshot) return;
-    const accentHex = CPCB_CATEGORY_STYLES[snapshot.cpcb.categoryKey]?.accentHex ?? '#67E8F9';
+    const accentHex = CPCB_CATEGORY_STYLES[snapshot.cpcb.categoryKey]?.accentHex ?? '#38BDF8';
     beaconColorTriggerRef.current?.(accentHex);
   }, [snapshot?.cpcb.categoryKey, snapshot?.location.id]);
 
@@ -231,7 +241,7 @@ export function InteractiveGlobe({
       });
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.1;
+      renderer.toneMappingExposure = 1.18;
       renderer.setPixelRatio(isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2));
       renderer.setSize(width, height);
       renderer.shadowMap.enabled = !isSoftwareGl;
@@ -247,36 +257,41 @@ export function InteractiveGlobe({
     const height = Math.max(280, container.clientHeight || 460);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#02040d');
-    scene.fog = new THREE.FogExp2('#02040d', 0.018);
+    scene.background = new THREE.Color('#030712');
 
     // 33-deg telephoto orbital lens reduces perspective distortion so Earth feels massive
     const camera = new THREE.PerspectiveCamera(33, width / height, 0.1, 70);
     latLngToVector3(
       selectedRef.current.latitude,
       selectedRef.current.longitude,
-      2.72,
+      2.65,
       camera.position
     );
 
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     const envTex = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
     scene.environment = envTex;
-    scene.environmentIntensity = 0.2;
+    scene.environmentIntensity = 0.28;
     pmremGenerator.dispose();
 
     const sunDir = computeUtcSunDirection(new Date());
+    const orbitalSunDir = camera.position
+      .clone()
+      .normalize()
+      .applyAxisAngle(new THREE.Vector3(0, 1, 0), 0.55)
+      .add(new THREE.Vector3(0, 0.28, 0))
+      .normalize();
 
-    // Orbital solar lighting rig synced to real-time UTC subsolar coordinates
-    const hemiLight = new THREE.HemisphereLight('#93c5fd', '#030816', 0.34);
+    // Default clear orbital sunlight rig (keeps terrain & coastlines crisp across all timezones)
+    const hemiLight = new THREE.HemisphereLight('#bae6fd', '#081226', 1.05);
     scene.add(hemiLight);
 
-    const keyLight = new THREE.DirectionalLight('#fff6e9', 2.75);
-    keyLight.position.copy(sunDir).multiplyScalar(8);
+    const keyLight = new THREE.DirectionalLight('#fff8ef', 2.45);
+    keyLight.position.copy(orbitalSunDir).multiplyScalar(8);
     scene.add(keyLight);
 
-    const rimLight = new THREE.DirectionalLight('#38bdf8', 0.36);
-    rimLight.position.copy(sunDir).multiplyScalar(-5).add(new THREE.Vector3(0, 1.8, 0));
+    const rimLight = new THREE.DirectionalLight('#38bdf8', 0.45);
+    rimLight.position.copy(orbitalSunDir).multiplyScalar(-5).add(new THREE.Vector3(0, 1.8, 0));
     scene.add(rimLight);
 
     const globeGroup = new THREE.Group();
@@ -294,26 +309,26 @@ export function InteractiveGlobe({
     } = createRealisticEarthTextures(maxAniso);
 
     // High-segment Earth mesh with PBR ocean specular glint, mountain relief & black-marble night lights
-    const earthGeo = new THREE.SphereGeometry(GLOBE_RADIUS, 112, 72);
+    const earthGeo = new THREE.SphereGeometry(GLOBE_RADIUS, 128, 84);
     const earthUniforms = {
-      uSunDirection: { value: sunDir.clone() },
-      uDayNightMix: { value: 1.0 },
+      uSunDirection: { value: orbitalSunDir.clone() },
+      uDayNightMix: { value: 0.22 },
     };
 
     const earthMat = new THREE.MeshPhysicalMaterial({
       map: colorMap,
       normalMap,
-      normalScale: new THREE.Vector2(1.22, 1.22),
+      normalScale: new THREE.Vector2(1.65, 1.65),
       bumpMap,
-      bumpScale: 0.015,
+      bumpScale: 0.024,
       roughnessMap,
       roughness: 1.0,
       metalness: 0.02,
-      clearcoat: 0.08,
-      clearcoatRoughness: 0.38,
+      clearcoat: 0.14,
+      clearcoatRoughness: 0.28,
       emissive: new THREE.Color('#ffcb75'),
       emissiveMap: nightLightsMap,
-      emissiveIntensity: 1.55,
+      emissiveIntensity: 0.45,
     });
 
     earthMat.onBeforeCompile = (shader) => {
@@ -353,22 +368,22 @@ export function InteractiveGlobe({
            vec3 globeN = normalize(vGlobeWorldNormal);
            vec3 globeV = normalize(cameraPosition - vGlobeWorldPos);
            float sunDot = dot(globeN, normalize(uSunDirection));
-           float viewRim = pow(1.0 - clamp(dot(globeN, globeV), 0.0, 1.0), 2.8);
-           float dayFactor = smoothstep(-0.22, 0.38, sunDot);
-           vec3 rayleighHaze = vec3(0.30, 0.60, 0.98);
-           diffuseColor.rgb = mix(diffuseColor.rgb, rayleighHaze, viewRim * (0.26 + 0.48 * dayFactor));
-           // Warm amber-coral twilight scatter along Earth's real-time solar terminator
-           float twilight = exp(-pow(sunDot / 0.13, 2.0)) * uDayNightMix;
-           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.96, 0.48, 0.22), twilight * 0.24);`
+           float viewRim = pow(1.0 - clamp(dot(globeN, globeV), 0.0, 1.0), 4.6);
+           float dayFactor = smoothstep(-0.25, 0.35, sunDot);
+           vec3 rayleighHaze = vec3(0.32, 0.65, 0.99);
+           diffuseColor.rgb = mix(diffuseColor.rgb, rayleighHaze, viewRim * (0.12 + 0.26 * dayFactor));
+           // Subtle warm twilight scatter along solar terminator
+           float twilight = exp(-pow(sunDot / 0.14, 2.0)) * uDayNightMix;
+           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.96, 0.50, 0.24), twilight * 0.22);`
         )
         .replace(
           '#include <emissivemap_fragment>',
           `#include <emissivemap_fragment>
            float nightDot = dot(normalize(vGlobeWorldNormal), normalize(uSunDirection));
-           float nightMask = mix(0.24, smoothstep(0.12, -0.20, nightDot), uDayNightMix);
+           float nightMask = mix(0.18, smoothstep(0.10, -0.22, nightDot), uDayNightMix);
            totalEmissiveRadiance *= nightMask;
-           float darkSide = smoothstep(0.05, -0.45, nightDot) * uDayNightMix;
-           totalEmissiveRadiance += diffuseColor.rgb * vec3(0.035, 0.065, 0.13) * darkSide;`
+           float darkSide = smoothstep(0.06, -0.45, nightDot) * uDayNightMix;
+           totalEmissiveRadiance += diffuseColor.rgb * vec3(0.06, 0.11, 0.20) * darkSide;`
         );
     };
 
@@ -382,7 +397,7 @@ export function InteractiveGlobe({
       map: cloudMap,
       color: new THREE.Color('#020617'),
       transparent: true,
-      opacity: 0.24,
+      opacity: 0.14,
       depthWrite: false,
     });
     const cloudShadowMesh = new THREE.Mesh(cloudShadowGeo, cloudShadowMat);
@@ -390,13 +405,13 @@ export function InteractiveGlobe({
     cloudShadowMesh.renderOrder = 1;
     globeGroup.add(cloudShadowMesh);
 
-    // Tropospheric Coriolis & cirrus cloud deck
-    const cloudGeo = new THREE.SphereGeometry(GLOBE_RADIUS * 1.013, 88, 64);
+    // Crisp translucent tropospheric cloud deck (keeps continents razor sharp below)
+    const cloudGeo = new THREE.SphereGeometry(GLOBE_RADIUS * 1.012, 88, 64);
     const cloudMat = new THREE.MeshStandardMaterial({
       map: cloudMap,
       transparent: true,
-      opacity: 0.65,
-      roughness: 0.94,
+      opacity: 0.42,
+      roughness: 0.92,
       metalness: 0.0,
       depthWrite: false,
     });
@@ -404,15 +419,16 @@ export function InteractiveGlobe({
     cloudMesh.renderOrder = 2;
     globeGroup.add(cloudMesh);
 
-    // Faint Toggleable 15-degree Cartographic Latitude / Longitude Graticule
+    // Faint Toggleable 15-degree Cartographic Latitude / Longitude Graticule (off by default for photorealism)
     const graticuleGeo = buildCartographicGraticule(GLOBE_RADIUS * 1.0025);
     const graticuleMat = new THREE.LineBasicMaterial({
-      color: '#67E8F9',
+      color: '#38BDF8',
       transparent: true,
-      opacity: 0.09,
+      opacity: 0.11,
       depthWrite: false,
     });
     const graticuleLines = new THREE.LineSegments(graticuleGeo, graticuleMat);
+    graticuleLines.visible = false;
     graticuleLines.renderOrder = 2;
     globeGroup.add(graticuleLines);
 
@@ -654,7 +670,7 @@ export function InteractiveGlobe({
     const activeGroup = new THREE.Group();
     const activeOuterRingGeo = new THREE.RingGeometry(0.019, 0.025, 28);
     const activeOuterRingMat = new THREE.MeshBasicMaterial({
-      color: '#67E8F9',
+      color: '#38BDF8',
       side: THREE.DoubleSide,
       transparent: true,
       opacity: 0.92,
@@ -684,7 +700,7 @@ export function InteractiveGlobe({
 
     const activeBeaconGeo = new THREE.OctahedronGeometry(0.0095, 0);
     const activeBeaconMat = new THREE.MeshStandardMaterial({
-      color: '#67E8F9',
+      color: '#38BDF8',
       emissive: '#1D9E75',
       emissiveIntensity: 0.95,
       roughness: 0.2,
@@ -714,7 +730,7 @@ export function InteractiveGlobe({
     for (let i = 0; i <= 56; i += 1) arcPoints.push(new THREE.Vector3());
     let flightArcGeo = new THREE.BufferGeometry().setFromPoints(arcPoints);
     const flightArcMat = new THREE.LineBasicMaterial({
-      color: '#67E8F9',
+      color: '#38BDF8',
       transparent: true,
       opacity: 0.72,
     });
@@ -781,6 +797,13 @@ export function InteractiveGlobe({
       requestRender();
     };
 
+    const zoomBy = (factor: number) => {
+      _targetCamDir.copy(camera.position).normalize();
+      targetDist = Math.max(1.28, Math.min(4.6, camera.position.length() * factor));
+      transitionActive = true;
+      requestRender();
+    };
+
     const setCloudsVisible = (visible: boolean) => {
       cloudMesh.visible = visible;
       cloudShadowMesh.visible = visible;
@@ -792,18 +815,34 @@ export function InteractiveGlobe({
       requestRender();
     };
 
-    const setAtlasBright = (atlasBright: boolean) => {
-      if (atlasBright) {
-        hemiLight.intensity = 1.95;
-        keyLight.intensity = 1.25;
-        earthUniforms.uDayNightMix.value = 0.0;
-        earthMat.emissiveIntensity = 0.14;
-        airglowMesh.visible = false;
-      } else {
-        hemiLight.intensity = 0.34;
-        keyLight.intensity = 2.75;
+    const setUtcLighting = (useUtcSun: boolean) => {
+      if (useUtcSun) {
+        hemiLight.intensity = 0.52;
+        keyLight.intensity = 2.85;
+        keyLight.position.copy(sunDir).multiplyScalar(8);
+        rimLight.position.copy(sunDir).multiplyScalar(-5).add(new THREE.Vector3(0, 1.8, 0));
+        earthUniforms.uSunDirection.value.copy(sunDir);
         earthUniforms.uDayNightMix.value = 1.0;
-        earthMat.emissiveIntensity = 1.55;
+        atmoMat.uniforms.uSunDirection.value.copy(sunDir);
+        airglowMat.uniforms.uSunDirection.value.copy(sunDir);
+        earthMat.emissiveIntensity = 1.5;
+        airglowMesh.visible = true;
+      } else {
+        const curCamSun = camera.position
+          .clone()
+          .normalize()
+          .applyAxisAngle(new THREE.Vector3(0, 1, 0), 0.52)
+          .add(new THREE.Vector3(0, 0.25, 0))
+          .normalize();
+        hemiLight.intensity = 1.05;
+        keyLight.intensity = 2.45;
+        keyLight.position.copy(curCamSun).multiplyScalar(8);
+        rimLight.position.copy(curCamSun).multiplyScalar(-5).add(new THREE.Vector3(0, 1.8, 0));
+        earthUniforms.uSunDirection.value.copy(curCamSun);
+        earthUniforms.uDayNightMix.value = 0.22;
+        atmoMat.uniforms.uSunDirection.value.copy(curCamSun);
+        airglowMat.uniforms.uSunDirection.value.copy(curCamSun);
+        earthMat.emissiveIntensity = 0.45;
         airglowMesh.visible = true;
       }
       requestRender();
@@ -818,10 +857,12 @@ export function InteractiveGlobe({
 
     focusLocationTriggerRef.current = startFocusOnSelected;
     flyToCoordsTriggerRef.current = flyToCoords;
+    zoomTriggerRef.current = zoomBy;
     cloudToggleTriggerRef.current = setCloudsVisible;
     gridToggleTriggerRef.current = setGridVisible;
-    lightingToggleTriggerRef.current = setAtlasBright;
+    lightingToggleTriggerRef.current = setUtcLighting;
     beaconColorTriggerRef.current = setBeaconTint;
+    requestRenderRef.current = requestRender;
 
     controls.addEventListener('start', () => {
       transitionActive = false;
@@ -910,7 +951,8 @@ export function InteractiveGlobe({
     renderer.domElement.addEventListener('pointercancel', handlePointerLeave);
     renderer.domElement.addEventListener('webglcontextlost', handleContextLost);
 
-    let frameId = 0;
+    let rafId = 0;
+    let timeoutId = 0;
     let disposed = false;
     let renderBusy = false;
     let renderDirty = false;
@@ -921,7 +963,7 @@ export function InteractiveGlobe({
       const sync = gl.fenceSync ? gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0) : null;
       gl.flush();
       if (!sync) {
-        frameId = window.setTimeout(cb, 80);
+        timeoutId = window.setTimeout(cb, 80);
         return;
       }
       const poll = () => {
@@ -931,13 +973,13 @@ export function InteractiveGlobe({
         }
         const state = gl.getSyncParameter(sync, gl.SYNC_STATUS);
         if (state === gl.UNSIGNALED) {
-          frameId = window.setTimeout(poll, 5);
+          timeoutId = window.setTimeout(poll, 5);
         } else {
           gl.deleteSync(sync);
-          frameId = window.setTimeout(cb, 80);
+          timeoutId = window.setTimeout(cb, 80);
         }
       };
-      frameId = window.setTimeout(poll, 5);
+      timeoutId = window.setTimeout(poll, 5);
     }
 
     function requestRender() {
@@ -947,7 +989,7 @@ export function InteractiveGlobe({
         return;
       }
       renderBusy = true;
-      frameId = requestAnimationFrame(() => {
+      rafId = requestAnimationFrame(() => {
         if (disposed) return;
         renderDirty = false;
         const delta = Math.min(0.1, clock.getDelta());
@@ -1019,8 +1061,9 @@ export function InteractiveGlobe({
 
     return () => {
       disposed = true;
-      cancelAnimationFrame(frameId);
-      clearTimeout(frameId);
+      requestRenderRef.current = null;
+      cancelAnimationFrame(rafId);
+      clearTimeout(timeoutId);
       resizeObserver?.disconnect();
       window.removeEventListener('resize', handleResize);
       renderer.domElement.removeEventListener('pointerdown', handlePointerDown);
@@ -1094,12 +1137,12 @@ export function InteractiveGlobe({
         >
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
             <div>
-              <p className="font-semibold text-[#67E8F9]">
+              <p className="font-semibold text-[#38BDF8]">
                 {lang === 'hi'
                   ? 'WebGL 3D उपलब्ध नहीं — इंटरैक्टिव 2D ग्लोब सक्रिय'
                   : 'WebGL 3D unavailable — interactive 2D globe view active'}
               </p>
-              <p className="font-mono-tabular text-[11px] text-[#A7A3C7]">
+              <p className="font-mono-tabular text-[11px] text-[#9FB0C7]">
                 {selectedLocation.name} · {Math.abs(selectedLocation.latitude).toFixed(2)}°{ns},{' '}
                 {Math.abs(selectedLocation.longitude).toFixed(2)}°{ew}
               </p>
@@ -1108,7 +1151,7 @@ export function InteractiveGlobe({
               type="button"
               onClick={onDetectGps}
               disabled={isLocating}
-              className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg bg-[#67E8F9] px-3 py-1 text-xs font-semibold text-[#0B0A16] hover:bg-[#A5F3FC] disabled:opacity-60"
+              className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg bg-[#38BDF8] px-3 py-1 text-xs font-semibold text-[#0C1322] hover:bg-[#7DD3FC] disabled:opacity-60"
             >
               <LocateFixed className="h-3.5 w-3.5" aria-hidden="true" />
               <span>{isLocating ? '...' : lang === 'hi' ? 'मेरा स्थान' : 'My Location'}</span>
@@ -1146,7 +1189,7 @@ export function InteractiveGlobe({
                   x2={360}
                   y1={y}
                   y2={y}
-                  stroke="#67E8F9"
+                  stroke="#38BDF8"
                   strokeOpacity={lat === 0 ? 0.25 : 0.1}
                   strokeWidth={0.5}
                 />
@@ -1161,7 +1204,7 @@ export function InteractiveGlobe({
                   x2={x}
                   y1={0}
                   y2={180}
-                  stroke="#67E8F9"
+                  stroke="#38BDF8"
                   strokeOpacity={lng === 0 ? 0.25 : 0.1}
                   strokeWidth={0.5}
                 />
@@ -1204,7 +1247,7 @@ export function InteractiveGlobe({
             <circle cx={selX} cy={selY} r={2.2} fill="#5DCAA5" />
           </svg>
 
-          <p className="text-[11px] text-[#A7A3C7]">
+          <p className="text-[11px] text-[#9FB0C7]">
             {lang === 'hi'
               ? 'ग्लोब मैप पर किसी भी शहर के बिंदु या निर्देशांक पर क्लिक करें।'
               : 'Click any hub dot or anywhere on the coordinate grid to inspect live AQI.'}
@@ -1218,7 +1261,7 @@ export function InteractiveGlobe({
     <div className="space-y-2.5">
       {/* Globe Region Fly-To Strip */}
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-[11px] font-semibold text-[#A7A3C7] mr-1">
+        <span className="text-[11px] font-semibold text-[#9FB0C7] mr-1">
           {lang === 'hi' ? 'ग्लोब घुमाएं:' : 'Orbit to:'}
         </span>
         {GLOBE_REGION_TARGETS.map((tgt) => (
@@ -1229,7 +1272,7 @@ export function InteractiveGlobe({
               setAutoSpin(false);
               flyToCoordsTriggerRef.current?.(tgt.lat, tgt.lng, tgt.dist);
             }}
-            className="min-h-[34px] sm:min-h-[30px] rounded-md border border-white/12 bg-[#0B0A16] px-2.5 py-0.5 text-[11px] font-medium text-[#E6EDF7] hover:border-[#67E8F9] hover:bg-[#14163F] whitespace-nowrap shrink-0 transition-colors"
+            className="min-h-[34px] sm:min-h-[30px] rounded-md border border-white/12 bg-[#0C1322] px-2.5 py-0.5 text-[11px] font-medium text-[#E6EDF7] hover:border-[#38BDF8] hover:bg-[#182947] whitespace-nowrap shrink-0 transition-colors"
           >
             {lang === 'hi' ? tgt.labelHi : tgt.labelEn}
           </button>
@@ -1245,16 +1288,16 @@ export function InteractiveGlobe({
         />
 
         {/* Crisp Top-Left Spatial Telemetry Readout (Zero Backdrop-Blur) */}
-        <div className="pointer-events-none absolute left-3 top-3 sm:left-4 sm:top-4 rounded-xl border border-[#67E8F9]/35 bg-[#0B0A16]/95 px-3 py-2 text-xs text-[#E6EDF7]">
+        <div className="pointer-events-none absolute left-3 top-3 sm:left-4 sm:top-4 rounded-xl border border-[#38BDF8]/35 bg-[#0C1322]/95 px-3 py-2 text-xs text-[#E6EDF7]">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-[#67E8F9]">{selectedLocation.name}</span>
+            <span className="font-semibold text-[#38BDF8]">{selectedLocation.name}</span>
             {snapshot ? (
               <span className="font-mono-tabular text-[11px] font-bold text-[#5DCAA5]">
                 AQI {snapshot.current.usAqi}
               </span>
             ) : null}
           </div>
-          <p className="font-mono-tabular text-[11px] text-[#A7A3C7]">
+          <p className="font-mono-tabular text-[11px] text-[#9FB0C7]">
             {Math.abs(selectedLocation.latitude).toFixed(2)}°{ns},{' '}
             {Math.abs(selectedLocation.longitude).toFixed(2)}°{ew}
           </p>
@@ -1269,36 +1312,36 @@ export function InteractiveGlobe({
             type="button"
             onClick={() => setHudCollapsed((prev) => !prev)}
             aria-expanded={!hudCollapsed}
-            className="mb-1.5 inline-flex min-h-[34px] sm:min-h-[30px] items-center gap-1 rounded-md border border-white/15 bg-[#0B0A16]/95 px-2.5 py-1 text-[11px] font-medium text-[#E6EDF7] hover:bg-[#14163F] whitespace-nowrap"
+            className="mb-1.5 inline-flex min-h-[34px] sm:min-h-[30px] items-center gap-1 rounded-md border border-white/15 bg-[#0C1322]/95 px-2.5 py-1 text-[11px] font-medium text-[#E6EDF7] hover:bg-[#182947] whitespace-nowrap"
           >
             {hudCollapsed ? (
               <>
-                <ChevronUp className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
+                <ChevronUp className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
                 <span>{lang === 'hi' ? 'नियंत्रण' : 'Controls'}</span>
               </>
             ) : (
               <>
-                <ChevronDown className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
+                <ChevronDown className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
                 <span>{lang === 'hi' ? 'छिपाएं' : 'Hide'}</span>
               </>
             )}
           </button>
 
           {!hudCollapsed ? (
-            <div className="flex flex-wrap items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-[#0B0A16]/95 px-2.5 py-2 text-xs text-[#E6EDF7]">
+            <div className="flex flex-wrap items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-[#0C1322]/95 px-2.5 py-2 text-xs text-[#E6EDF7]">
               <button
                 type="button"
                 onClick={() => setAutoSpin((prev) => !prev)}
-                className="inline-flex min-h-[36px] sm:min-h-[32px] items-center gap-1.5 rounded-md border border-white/12 bg-[#06050E] px-2.5 py-1 font-medium hover:bg-[#14163F] whitespace-nowrap shrink-0"
+                className="inline-flex min-h-[36px] sm:min-h-[32px] items-center gap-1.5 rounded-md border border-white/12 bg-[#070B12] px-2.5 py-1 font-medium hover:bg-[#182947] whitespace-nowrap shrink-0"
               >
                 {autoSpin ? (
                   <>
-                    <Pause className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
+                    <Pause className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
                     <span>{lang === 'hi' ? 'रोकें' : 'Pause'}</span>
                   </>
                 ) : (
                   <>
-                    <Play className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
+                    <Play className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
                     <span>{lang === 'hi' ? 'घुमाएं' : 'Spin'}</span>
                   </>
                 )}
@@ -1310,11 +1353,11 @@ export function InteractiveGlobe({
                 aria-pressed={showClouds}
                 className={`inline-flex min-h-[36px] sm:min-h-[32px] items-center gap-1.5 rounded-md border px-2.5 py-1 font-medium whitespace-nowrap shrink-0 ${
                   showClouds
-                    ? 'border-[#67E8F9]/50 bg-[#14163F] text-[#E6EDF7]'
-                    : 'border-white/12 bg-[#06050E] text-[#A7A3C7] hover:bg-[#14163F]'
+                    ? 'border-[#38BDF8]/50 bg-[#182947] text-[#E6EDF7]'
+                    : 'border-white/12 bg-[#070B12] text-[#9FB0C7] hover:bg-[#182947]'
                 }`}
               >
-                <Cloud className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
+                <Cloud className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
                 <span>{showClouds ? (lang === 'hi' ? 'बादल' : 'Clouds') : (lang === 'hi' ? 'साफ' : 'Clear')}</span>
               </button>
 
@@ -1324,42 +1367,60 @@ export function InteractiveGlobe({
                 aria-pressed={showGrid}
                 className={`inline-flex min-h-[36px] sm:min-h-[32px] items-center gap-1.5 rounded-md border px-2.5 py-1 font-medium whitespace-nowrap shrink-0 ${
                   showGrid
-                    ? 'border-[#67E8F9]/50 bg-[#14163F] text-[#E6EDF7]'
-                    : 'border-white/12 bg-[#06050E] text-[#A7A3C7] hover:bg-[#14163F]'
+                    ? 'border-[#38BDF8]/50 bg-[#182947] text-[#E6EDF7]'
+                    : 'border-white/12 bg-[#070B12] text-[#9FB0C7] hover:bg-[#182947]'
                 }`}
               >
-                <Grid className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
+                <Grid className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
                 <span>{lang === 'hi' ? 'ग्रिड' : '15° Grid'}</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setAtlasLighting((prev) => !prev)}
-                aria-pressed={atlasLighting}
+                onClick={() => zoomTriggerRef.current?.(0.76)}
+                aria-label={lang === 'hi' ? 'ज़ूम इन' : 'Zoom in globe'}
+                className="inline-flex min-h-[36px] sm:min-h-[32px] items-center justify-center rounded-md border border-white/12 bg-[#070B12] px-2 py-1 font-medium hover:bg-[#15243B] whitespace-nowrap shrink-0"
+              >
+                <ZoomIn className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => zoomTriggerRef.current?.(1.3)}
+                aria-label={lang === 'hi' ? 'ज़ूम आउट' : 'Zoom out globe'}
+                className="inline-flex min-h-[36px] sm:min-h-[32px] items-center justify-center rounded-md border border-white/12 bg-[#070B12] px-2 py-1 font-medium hover:bg-[#15243B] whitespace-nowrap shrink-0"
+              >
+                <ZoomOut className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUtcSunMode((prev) => !prev)}
+                aria-pressed={utcSunMode}
                 className={`inline-flex min-h-[36px] sm:min-h-[32px] items-center gap-1.5 rounded-md border px-2.5 py-1 font-medium whitespace-nowrap shrink-0 ${
-                  atlasLighting
-                    ? 'border-[#67E8F9]/50 bg-[#14163F] text-[#E6EDF7]'
-                    : 'border-white/12 bg-[#06050E] text-[#A7A3C7] hover:bg-[#14163F]'
+                  utcSunMode
+                    ? 'border-[#38BDF8]/50 bg-[#15243B] text-[#F1F5F9]'
+                    : 'border-white/12 bg-[#070B12] text-[#9FB0C7] hover:bg-[#15243B]'
                 }`}
               >
-                <Sun className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
+                <Sun className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
                 <span>
-                  {atlasLighting
+                  {utcSunMode
                     ? lang === 'hi'
-                      ? 'पूर्ण प्रकाश'
-                      : 'Full Atlas'
+                      ? 'लाइव सूर्य'
+                      : 'Live UTC Sun'
                     : lang === 'hi'
-                    ? 'लाइव सूर्य'
-                    : 'Live UTC Sun'}
+                    ? 'स्पष्ट दिन'
+                    : 'Clear Orbit'}
                 </span>
               </button>
 
               <button
                 type="button"
                 onClick={() => focusLocationTriggerRef.current?.()}
-                className="inline-flex min-h-[36px] sm:min-h-[32px] items-center gap-1.5 rounded-md border border-white/12 bg-[#06050E] px-2.5 py-1 font-medium hover:bg-[#14163F] whitespace-nowrap shrink-0"
+                className="inline-flex min-h-[36px] sm:min-h-[32px] items-center gap-1.5 rounded-md border border-white/12 bg-[#070B12] px-2.5 py-1 font-medium hover:bg-[#15243B] whitespace-nowrap shrink-0"
               >
-                <Compass className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
+                <Compass className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
                 <span>{lang === 'hi' ? 'पिन' : 'Pin'}</span>
               </button>
 
@@ -1367,9 +1428,9 @@ export function InteractiveGlobe({
                 type="button"
                 onClick={onDetectGps}
                 disabled={isLocating}
-                className="inline-flex min-h-[36px] sm:min-h-[32px] items-center gap-1.5 rounded-md bg-[#67E8F9] px-2.5 py-1 font-semibold text-[#0B0A16] hover:bg-[#A5F3FC] disabled:opacity-60 whitespace-nowrap shrink-0"
+                className="inline-flex min-h-[36px] sm:min-h-[32px] items-center gap-1.5 rounded-md bg-[#38BDF8] px-2.5 py-1 font-semibold text-[#070B12] hover:bg-[#7DD3FC] disabled:opacity-60 whitespace-nowrap shrink-0"
               >
-                <LocateFixed className="h-3.5 w-3.5 text-[#0B0A16]" aria-hidden="true" />
+                <LocateFixed className="h-3.5 w-3.5 text-[#070B12]" aria-hidden="true" />
                 <span>{isLocating ? '...' : 'GPS'}</span>
               </button>
 
@@ -1379,9 +1440,9 @@ export function InteractiveGlobe({
                   setAutoSpin(true);
                   flyToCoordsTriggerRef.current?.(20.0, 45.0, 3.25);
                 }}
-                className="inline-flex min-h-[36px] sm:min-h-[32px] items-center gap-1.5 rounded-md border border-white/12 bg-[#06050E] px-2.5 py-1 font-medium hover:bg-[#14163F] whitespace-nowrap shrink-0"
+                className="inline-flex min-h-[36px] sm:min-h-[32px] items-center gap-1.5 rounded-md border border-white/12 bg-[#070B12] px-2.5 py-1 font-medium hover:bg-[#15243B] whitespace-nowrap shrink-0"
               >
-                <RotateCcw className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
+                <RotateCcw className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
                 <span>{lang === 'hi' ? 'विश्व' : 'World'}</span>
               </button>
             </div>

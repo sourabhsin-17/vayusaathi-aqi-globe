@@ -1,6 +1,10 @@
 import { Suspense, lazy, useState } from 'react';
 import { Columns2, Compass, Globe2, LocateFixed, MapPin } from 'lucide-react';
 import { ALL_MONITORED_CITIES } from '../lib/aqiCities';
+import {
+  buildFallbackCoordinateLocation,
+  resolveExactLocationFromCoords,
+} from '../lib/geolocationService';
 import { ErrorBoundary } from './ErrorBoundary';
 import { InteractiveMapPanel } from './InteractiveMapPanel';
 import type { AirQualitySnapshot, IndianLocation, Language } from '../types/vayu';
@@ -56,27 +60,20 @@ export function LocationExplorer({
     setIsLocating(true);
     setGeoStatus(null);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         const lat = Number(pos.coords.latitude.toFixed(4));
         const lon = Number(pos.coords.longitude.toFixed(4));
-        const inIndia = lat >= 5 && lat <= 38 && lon >= 65 && lon <= 98;
-        const ns = lat >= 0 ? 'N' : 'S';
-        const ew = lon >= 0 ? 'E' : 'W';
-        onSelectLocation({
-          id: `geo-${lat}-${lon}`,
-          name: lang === 'hi' ? 'मेरा वर्तमान स्थान' : 'My Current Location',
-          state: inIndia
-            ? `India (${Math.abs(lat).toFixed(2)}°${ns}, ${Math.abs(lon).toFixed(2)}°${ew})`
-            : `GPS (${Math.abs(lat).toFixed(2)}°${ns}, ${Math.abs(lon).toFixed(2)}°${ew})`,
-          latitude: lat,
-          longitude: lon,
-          isCurrentLocation: true,
-        });
+        const acc = Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : undefined;
+        const immediate = buildFallbackCoordinateLocation(lat, lon, lang, acc);
+        onSelectLocation(immediate);
+
+        const resolved = await resolveExactLocationFromCoords(lat, lon, lang, acc);
+        onSelectLocation(resolved);
         setIsLocating(false);
         setGeoStatus(
           lang === 'hi'
-            ? `लाइव GPS स्थान (${lat.toFixed(2)}°, ${lon.toFixed(2)}°) मानचित्र और ग्लोब पर पिन किया गया।`
-            : `Live GPS coordinates (${lat.toFixed(2)}°, ${lon.toFixed(2)}°) pinned on the map and globe.`
+            ? `लाइव GPS स्थान (${resolved.exactAreaLabel ?? resolved.name}) मानचित्र और ग्लोब पर पिन किया गया।`
+            : `Live GPS area locked: ${resolved.exactAreaLabel ?? resolved.name}.`
         );
       },
       () => {
@@ -87,7 +84,7 @@ export function LocationExplorer({
             : 'Location permission denied or unavailable. Click anywhere on the map or spin the 3D globe to choose a location.'
         );
       },
-      { enableHighAccuracy: false, timeout: 8000 }
+      { enableHighAccuracy: true, timeout: 9000 }
     );
   };
 
@@ -99,11 +96,11 @@ export function LocationExplorer({
     >
       <div className="flex flex-col gap-4 border-b border-white/10 pb-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
-          <p className="font-mono-tabular text-[11px] font-semibold uppercase tracking-wider text-[#67E8F9]">
+          <p className="font-mono-tabular text-[11px] font-semibold uppercase tracking-wider text-[#38BDF8]">
             03. {lang === 'hi' ? 'मानचित्र और ग्लोब एक्सप्लोरर' : 'Interactive Spatial Explorer'}
           </p>
           <div className="flex items-center gap-2">
-            <Globe2 className="h-5 w-5 text-[#67E8F9]" aria-hidden="true" />
+            <Globe2 className="h-5 w-5 text-[#38BDF8]" aria-hidden="true" />
             <h2
               id="map-globe-heading"
               className="text-2xl font-semibold tracking-tight text-[#E6EDF7] font-display"
@@ -113,7 +110,7 @@ export function LocationExplorer({
                 : 'Global Street Map & Playable 3D Earth Globe'}
             </h2>
           </div>
-          <p className="text-xs text-[#A7A3C7]">
+          <p className="text-xs text-[#9FB0C7]">
             {lang === 'hi'
               ? 'अपने मोहल्ले या दुनिया के किसी भी देश को देखने के लिए मानचित्र स्क्रॉल करें, या 3D ग्लोब घुमाएं और क्लिक करें।'
               : 'Scroll Google Maps down to any neighborhood worldwide, or spin Earth and click contrasting airshed hubs.'}
@@ -134,7 +131,7 @@ export function LocationExplorer({
           <div
             role="group"
             aria-label={lang === 'hi' ? 'मानचित्र और ग्लोब दृश्य मोड' : 'Map and globe view mode'}
-            className="inline-flex items-center rounded-xl border border-white/12 bg-[#0B0A16] p-1"
+            className="inline-flex items-center rounded-xl border border-white/12 bg-[#0C1322] p-1"
           >
             <button
               type="button"
@@ -142,8 +139,8 @@ export function LocationExplorer({
               aria-pressed={mode === 'split'}
               className={`inline-flex min-h-[34px] items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
                 mode === 'split'
-                  ? 'bg-[#67E8F9] text-[#0B0A16]'
-                  : 'text-[#A7A3C7] hover:text-[#E6EDF7]'
+                  ? 'bg-[#38BDF8] text-[#0C1322]'
+                  : 'text-[#9FB0C7] hover:text-[#E6EDF7]'
               }`}
             >
               <Columns2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -155,8 +152,8 @@ export function LocationExplorer({
               aria-pressed={mode === 'map'}
               className={`inline-flex min-h-[34px] items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
                 mode === 'map'
-                  ? 'bg-[#67E8F9] text-[#0B0A16]'
-                  : 'text-[#A7A3C7] hover:text-[#E6EDF7]'
+                  ? 'bg-[#38BDF8] text-[#0C1322]'
+                  : 'text-[#9FB0C7] hover:text-[#E6EDF7]'
               }`}
             >
               <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
@@ -168,8 +165,8 @@ export function LocationExplorer({
               aria-pressed={mode === 'globe'}
               className={`inline-flex min-h-[34px] items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 ${
                 mode === 'globe'
-                  ? 'bg-[#67E8F9] text-[#0B0A16]'
-                  : 'text-[#A7A3C7] hover:text-[#E6EDF7]'
+                  ? 'bg-[#38BDF8] text-[#0C1322]'
+                  : 'text-[#9FB0C7] hover:text-[#E6EDF7]'
               }`}
             >
               <Globe2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -181,9 +178,9 @@ export function LocationExplorer({
             type="button"
             onClick={handleDetectGps}
             disabled={isLocating}
-            className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl border border-white/12 bg-[#0B0A16] px-3 py-1.5 text-xs font-semibold text-[#E6EDF7] hover:border-[#67E8F9] hover:bg-[#14163F] disabled:opacity-60 whitespace-nowrap shrink-0"
+            className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl border border-white/12 bg-[#0C1322] px-3 py-1.5 text-xs font-semibold text-[#E6EDF7] hover:border-[#38BDF8] hover:bg-[#182947] disabled:opacity-60 whitespace-nowrap shrink-0"
           >
-            <LocateFixed className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
+            <LocateFixed className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
             <span>
               {isLocating
                 ? lang === 'hi'
@@ -198,8 +195,8 @@ export function LocationExplorer({
       </div>
 
       {/* Synced Airshed Flight Comparison Bar */}
-      <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-white/12 bg-[#0B0A16]/80 px-3.5 py-2.5">
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#67E8F9] mr-1">
+      <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-white/12 bg-[#0C1322]/80 px-3.5 py-2.5">
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#38BDF8] mr-1">
           <Compass className="h-3.5 w-3.5" aria-hidden="true" />
           <span>{lang === 'hi' ? 'वायु-क्षेत्र उड़ान तुलना:' : 'Fly & compare airsheds:'}</span>
         </span>
@@ -215,8 +212,8 @@ export function LocationExplorer({
               aria-pressed={active}
               className={`min-h-[30px] rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
                 active
-                  ? 'border-[#67E8F9] bg-[#67E8F9] text-[#0B0A16] font-semibold'
-                  : 'border-white/10 bg-[#0F0D22] text-[#E6EDF7] hover:border-[#67E8F9]/60 hover:bg-[#14163F]'
+                  ? 'border-[#38BDF8] bg-[#38BDF8] text-[#0C1322] font-semibold'
+                  : 'border-white/10 bg-[#101A2C] text-[#E6EDF7] hover:border-[#38BDF8]/60 hover:bg-[#182947]'
               }`}
             >
               {lang === 'hi' ? item.tagHi : item.tagEn}
@@ -229,7 +226,7 @@ export function LocationExplorer({
         <p
           role="status"
           aria-live="polite"
-          className="mt-4 rounded-xl border border-white/12 bg-[#0B0A16] px-3.5 py-2 text-xs text-[#E6EDF7]"
+          className="mt-4 rounded-xl border border-white/12 bg-[#0C1322] px-3.5 py-2 text-xs text-[#E6EDF7]"
         >
           {geoStatus}
         </p>
@@ -258,7 +255,7 @@ export function LocationExplorer({
             <ErrorBoundary>
               <Suspense
                 fallback={
-                  <div className="flex h-[360px] sm:h-[460px] items-center justify-center rounded-xl border border-white/15 bg-[#06050E] text-xs font-medium text-[#A7A3C7]">
+                  <div className="flex h-[360px] sm:h-[460px] items-center justify-center rounded-xl border border-white/15 bg-[#070B12] text-xs font-medium text-[#9FB0C7]">
                     {lang === 'hi' ? '3D ग्लोब लोड हो रहा है...' : 'Loading playable 3D Earth globe...'}
                   </div>
                 }

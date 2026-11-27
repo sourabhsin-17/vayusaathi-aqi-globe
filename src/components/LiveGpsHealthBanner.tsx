@@ -61,18 +61,18 @@ export function LiveGpsHealthBanner({
   const warningColors =
     healthWarning?.severity === 'critical'
       ? {
-          wrap: 'border-red-400/55 bg-gradient-to-r from-[#2D0A14]/95 via-[#240B18]/95 to-[#14122E]/95 text-[#FFE4E6]',
+          wrap: 'border-red-400/55 bg-gradient-to-r from-[#2D0A14]/95 via-[#240B18]/95 to-[#142138]/95 text-[#FFE4E6]',
           badge: 'border-red-400/50 bg-red-500/20 text-red-200',
           icon: 'text-red-300',
         }
       : healthWarning?.severity === 'high'
       ? {
-          wrap: 'border-rose-400/50 bg-gradient-to-r from-[#260D17]/95 via-[#1C1022]/95 to-[#14122E]/95 text-[#FFE4E6]',
+          wrap: 'border-rose-400/50 bg-gradient-to-r from-[#260D17]/95 via-[#1C1022]/95 to-[#142138]/95 text-[#FFE4E6]',
           badge: 'border-rose-400/45 bg-rose-500/20 text-rose-200',
           icon: 'text-rose-300',
         }
       : {
-          wrap: 'border-amber-400/45 bg-gradient-to-r from-[#241909]/95 via-[#1C1612]/95 to-[#14122E]/95 text-[#FEF3C7]',
+          wrap: 'border-amber-400/45 bg-gradient-to-r from-[#241909]/95 via-[#1C1612]/95 to-[#142138]/95 text-[#FEF3C7]',
           badge: 'border-amber-400/45 bg-amber-500/20 text-amber-200',
           icon: 'text-amber-300',
         };
@@ -89,10 +89,10 @@ export function LiveGpsHealthBanner({
                   gpsStatus === 'locked'
                     ? 'border-[#5DCAA5]/45 bg-[#1D9E75]/18 text-[#5DCAA5]'
                     : gpsStatus === 'locating'
-                    ? 'border-[#67E8F9]/45 bg-[#67E8F9]/15 text-[#67E8F9]'
+                    ? 'border-[#38BDF8]/45 bg-[#38BDF8]/15 text-[#38BDF8]'
                     : gpsStatus === 'denied' || gpsStatus === 'unavailable'
                     ? 'border-amber-400/40 bg-amber-500/15 text-amber-200'
-                    : 'border-white/15 bg-[#0B0A16] text-[#A7A3C7]'
+                    : 'border-white/15 bg-[#0C1322] text-[#9FB0C7]'
                 }`}
               >
                 <LocateFixed
@@ -120,7 +120,7 @@ export function LiveGpsHealthBanner({
                   : 'Selected Area'}
               </span>
 
-              <span className="font-mono-tabular text-[#A7A3C7]">
+              <span className="font-mono-tabular text-[#9FB0C7]">
                 {coords}
                 {accuracyText ? ` · ${accuracyText}` : ''}
               </span>
@@ -131,7 +131,7 @@ export function LiveGpsHealthBanner({
                     snapshot.current.usAqi <= 50
                       ? 'border-[#5DCAA5]/40 bg-[#1D9E75]/15 text-[#5DCAA5]'
                       : snapshot.current.usAqi <= 100
-                      ? 'border-[#67E8F9]/35 bg-[#67E8F9]/12 text-[#67E8F9]'
+                      ? 'border-[#38BDF8]/35 bg-[#38BDF8]/12 text-[#38BDF8]'
                       : snapshot.current.usAqi <= 150
                       ? 'border-amber-400/40 bg-amber-500/15 text-amber-200'
                       : 'border-rose-400/45 bg-rose-500/18 text-rose-200'
@@ -146,21 +146,21 @@ export function LiveGpsHealthBanner({
                   {snapshot.current.pm25} µg/m³
                 </span>
               ) : aqLoading ? (
-                <span className="font-mono-tabular text-[#67E8F9]">
+                <span className="font-mono-tabular text-[#38BDF8]">
                   {isHi ? 'ताज़ा AQI लोड हो रहा है...' : 'Fetching instant area AQI...'}
                 </span>
               ) : null}
             </div>
 
             <div className="flex items-start gap-2">
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#67E8F9]" aria-hidden="true" />
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#38BDF8]" aria-hidden="true" />
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-[#E6EDF7] break-words">
                   {isHi ? 'आपका वर्तमान क्षेत्र: ' : 'Your Area: '}
-                  <span className="text-[#67E8F9]">{exactLocationText}</span>
+                  <span className="text-[#38BDF8]">{exactLocationText}</span>
                 </p>
                 {gpsStatusNote ? (
-                  <p className="text-xs text-[#A7A3C7]">{gpsStatusNote}</p>
+                  <p className="text-xs text-[#9FB0C7]">{gpsStatusNote}</p>
                 ) : null}
               </div>
             </div>
@@ -171,7 +171,7 @@ export function LiveGpsHealthBanner({
               type="button"
               onClick={onDetectGps}
               disabled={gpsStatus === 'locating'}
-              className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl border border-[#67E8F9]/45 bg-[#14163F] px-3.5 py-1.5 text-xs font-semibold text-[#67E8F9] hover:bg-[#1E2259] disabled:opacity-60 transition-colors whitespace-nowrap"
+              className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl border border-[#38BDF8]/45 bg-[#182947] px-3.5 py-1.5 text-xs font-semibold text-[#38BDF8] hover:bg-[#1E2259] disabled:opacity-60 transition-colors whitespace-nowrap"
             >
               <LocateFixed
                 className={`h-3.5 w-3.5 ${gpsStatus === 'locating' ? 'animate-spin' : ''}`}
@@ -201,7 +201,7 @@ export function LiveGpsHealthBanner({
                   notificationPermission === 'granted'
                     ? 'border-[#5DCAA5]/40 bg-[#1D9E75]/15 text-[#5DCAA5]'
                     : notificationPermission === 'denied'
-                    ? 'border-white/10 bg-[#0B0A16] text-[#A7A3C7] opacity-75'
+                    ? 'border-white/10 bg-[#0C1322] text-[#9FB0C7] opacity-75'
                     : 'border-amber-400/45 bg-amber-500/15 text-amber-200 hover:bg-amber-500/25'
                 }`}
               >
@@ -291,7 +291,7 @@ export function LiveGpsHealthBanner({
                     <button
                       type="button"
                       onClick={onEnableNotifications}
-                      className="inline-flex min-h-[36px] items-center gap-1.5 rounded-xl bg-white px-3.5 py-1.5 text-xs font-bold text-[#0B0A16] hover:bg-white/90 transition-colors"
+                      className="inline-flex min-h-[36px] items-center gap-1.5 rounded-xl bg-white px-3.5 py-1.5 text-xs font-bold text-[#0C1322] hover:bg-white/90 transition-colors"
                     >
                       <Bell className="h-3.5 w-3.5" aria-hidden="true" />
                       <span>

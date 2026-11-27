@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Calculator, Check, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { calculateWhatIfImpact } from '../lib/impactFormulas';
@@ -22,6 +22,14 @@ export function WhatIfCalculator({ snapshot, profile }: WhatIfCalculatorProps) {
     wearN95Mask: false,
     sealAndDampMop: true,
   });
+
+  useEffect(() => {
+    setChoices((prev) => ({
+      ...prev,
+      switchToTransit: profile.commuteMode === 'car' || profile.commuteMode === 'two_wheeler',
+      runPurifier: profile.hasAirPurifier,
+    }));
+  }, [profile.commuteMode, profile.hasAirPurifier]);
 
   const result = useMemo(
     () => calculateWhatIfImpact(choices, snapshot, profile),
@@ -135,14 +143,14 @@ export function WhatIfCalculator({ snapshot, profile }: WhatIfCalculatorProps) {
     <section id="what-if" aria-label={t(lang, 'whatIfTitle')} className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <p className="font-mono-tabular text-[11px] font-semibold uppercase tracking-wider text-[#67E8F9]">
+          <p className="font-mono-tabular text-[11px] font-semibold uppercase tracking-wider text-[#38BDF8]">
             09. {isHi ? 'पारदर्शी प्रभाव सिम्युलेटर' : 'Interactive Scenario Workbench'}
           </p>
           <h2 className="text-2xl font-semibold tracking-tight text-[#E6EDF7] font-display">
             {t(lang, 'whatIfTitle')}
           </h2>
         </div>
-        <span className="text-xs text-[#A7A3C7]">
+        <span className="text-xs text-[#9FB0C7]">
           {isHi
             ? 'सभी संख्याएं पारदर्शी सूत्रों पर आधारित अनुमान हैं'
             : 'All numbers are estimates derived from transparent formulas'}
@@ -153,28 +161,28 @@ export function WhatIfCalculator({ snapshot, profile }: WhatIfCalculatorProps) {
         {/* Preset Scenarios Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#A7A3C7] mr-1">
-              <SlidersHorizontal className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#9FB0C7] mr-1">
+              <SlidersHorizontal className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
               <span>{isHi ? 'त्वरित प्रीसेट:' : 'Quick scenario presets:'}</span>
             </span>
             <button
               type="button"
               onClick={() => applyPreset('zero_cost')}
-              className="min-h-[32px] rounded-lg border border-white/12 bg-[#0B0A16] px-3 py-1 text-xs font-semibold text-[#E6EDF7] hover:border-[#67E8F9]/60 hover:bg-[#14163F] whitespace-nowrap"
+              className="min-h-[32px] rounded-lg border border-white/12 bg-[#0C1322] px-3 py-1 text-xs font-semibold text-[#E6EDF7] hover:border-[#38BDF8]/60 hover:bg-[#182947] whitespace-nowrap"
             >
               {isHi ? 'निःशुल्क पारिवारिक सुरक्षा' : 'Zero-Cost Family Habits'}
             </button>
             <button
               type="button"
               onClick={() => applyPreset('commuter')}
-              className="min-h-[32px] rounded-lg border border-white/12 bg-[#0B0A16] px-3 py-1 text-xs font-semibold text-[#E6EDF7] hover:border-[#67E8F9]/60 hover:bg-[#14163F] whitespace-nowrap"
+              className="min-h-[32px] rounded-lg border border-white/12 bg-[#0C1322] px-3 py-1 text-xs font-semibold text-[#E6EDF7] hover:border-[#38BDF8]/60 hover:bg-[#182947] whitespace-nowrap"
             >
               {isHi ? 'कम-उत्सर्जन सफर' : 'Low-Emission Commuter'}
             </button>
             <button
               type="button"
               onClick={() => applyPreset('full_shield')}
-              className="min-h-[32px] rounded-lg border border-white/12 bg-[#0B0A16] px-3 py-1 text-xs font-semibold text-[#E6EDF7] hover:border-[#67E8F9]/60 hover:bg-[#14163F] whitespace-nowrap"
+              className="min-h-[32px] rounded-lg border border-white/12 bg-[#0C1322] px-3 py-1 text-xs font-semibold text-[#E6EDF7] hover:border-[#38BDF8]/60 hover:bg-[#182947] whitespace-nowrap"
             >
               {isHi ? 'अधिकतम सुरक्षा स्टैक' : 'Maximum Clean-Air Stack'}
             </button>
@@ -182,9 +190,9 @@ export function WhatIfCalculator({ snapshot, profile }: WhatIfCalculatorProps) {
 
           {/* Weekly Adherence Slider */}
           <div className="flex items-center gap-3 text-xs">
-            <label htmlFor="adherence-days" className="font-semibold text-[#A7A3C7] whitespace-nowrap">
+            <label htmlFor="adherence-days" className="font-semibold text-[#9FB0C7] whitespace-nowrap">
               {isHi ? 'सप्ताह के दिन:' : 'Days / week:'}{' '}
-              <span className="font-mono-tabular text-[#67E8F9]">{adherenceDays}d</span>
+              <span className="font-mono-tabular text-[#38BDF8]">{adherenceDays}d</span>
             </label>
             <input
               id="adherence-days"
@@ -193,7 +201,7 @@ export function WhatIfCalculator({ snapshot, profile }: WhatIfCalculatorProps) {
               max={7}
               value={adherenceDays}
               onChange={(e) => setAdherenceDays(Number(e.target.value))}
-              className="w-28 accent-[#67E8F9] cursor-pointer"
+              className="w-28 accent-[#38BDF8] cursor-pointer"
             />
           </div>
         </div>
@@ -219,8 +227,8 @@ export function WhatIfCalculator({ snapshot, profile }: WhatIfCalculatorProps) {
                     onClick={() => toggle(item.key)}
                     className={`flex min-h-[72px] flex-col justify-between rounded-2xl border p-3.5 text-left transition-colors ${
                       checked
-                        ? 'border-[#67E8F9] bg-[#14163F]'
-                        : 'border-white/10 bg-[#0B0A16]/80 hover:border-white/25 hover:bg-[#14122E]'
+                        ? 'border-[#38BDF8] bg-[#182947]'
+                        : 'border-white/10 bg-[#0C1322]/80 hover:border-white/25 hover:bg-[#142138]'
                     }`}
                   >
                     <div className="flex w-full items-start justify-between gap-2.5">
@@ -231,16 +239,16 @@ export function WhatIfCalculator({ snapshot, profile }: WhatIfCalculatorProps) {
                         aria-hidden="true"
                         className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
                           checked
-                            ? 'border-[#67E8F9] bg-[#67E8F9] text-[#0B0A16]'
-                            : 'border-white/20 bg-[#0B0A16]'
+                            ? 'border-[#38BDF8] bg-[#38BDF8] text-[#0C1322]'
+                            : 'border-white/20 bg-[#0C1322]'
                         }`}
                       >
-                        {checked ? <Check className="h-3 w-3 text-[#0B0A16]" /> : null}
+                        {checked ? <Check className="h-3 w-3 text-[#0C1322]" /> : null}
                       </span>
                     </div>
 
                     <div className="mt-2 flex w-full items-center justify-between gap-2 text-[11px]">
-                      <span className="text-[#A7A3C7]">
+                      <span className="text-[#9FB0C7]">
                         {isHi ? item.hintHi : item.hintEn}
                       </span>
                       {checked && stepMetric ? (
@@ -258,43 +266,43 @@ export function WhatIfCalculator({ snapshot, profile }: WhatIfCalculatorProps) {
           {/* Live Calculated Results + Visual Dose Meter */}
           <div
             aria-live="polite"
-            className="flex flex-col justify-between rounded-2xl border border-[#67E8F9]/25 bg-[#14163F] p-6 text-[#E6EDF7] lg:col-span-5"
+            className="flex flex-col justify-between rounded-2xl border border-[#38BDF8]/25 bg-[#182947] p-6 text-[#E6EDF7] lg:col-span-5"
           >
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-xs font-semibold text-[#67E8F9]">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#38BDF8]">
                 <Calculator className="h-4 w-4" aria-hidden="true" />
                 <span>{isHi ? 'अनुमानित दैनिक प्रभाव' : 'Estimated Combined Impact'}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-4 border-b border-white/15 pb-4">
                 <div>
-                  <span className="text-xs text-[#A7A3C7]">
+                  <span className="text-xs text-[#9FB0C7]">
                     {isHi ? 'PM2.5 संपर्क में कमी (अनुमान)' : 'Exposure drop (est.)'}
                   </span>
                   <p className="mt-1 text-3xl font-extrabold font-mono-tabular text-[#5DCAA5]">
                     -{result.totalExposureReductionPct}%
                   </p>
-                  <p className="mt-0.5 text-[11px] font-mono-tabular text-[#A7A3C7]">
+                  <p className="mt-0.5 text-[11px] font-mono-tabular text-[#9FB0C7]">
                     ~{result.estimatedBaselineDoseIndex} → ~{result.estimatedAdjustedDoseIndex} µg/m³ eq.
                   </p>
                 </div>
 
                 <div>
-                  <span className="text-xs text-[#A7A3C7]">
+                  <span className="text-xs text-[#9FB0C7]">
                     {isHi ? `CO2 बचत (${adherenceDays} दिन/सप्ताह)` : `CO2 saved (${adherenceDays}d/wk)`}
                   </span>
                   <p className="mt-1 text-3xl font-extrabold font-mono-tabular text-white">
-                    {adjustedWeeklyCo2} <span className="text-sm font-semibold text-[#67E8F9]">kg/wk</span>
+                    {adjustedWeeklyCo2} <span className="text-sm font-semibold text-[#38BDF8]">kg/wk</span>
                   </p>
-                  <p className="mt-0.5 text-[11px] font-mono-tabular text-[#A7A3C7]">
+                  <p className="mt-0.5 text-[11px] font-mono-tabular text-[#9FB0C7]">
                     ~{adjustedMonthlyCo2} kg / month
                   </p>
                 </div>
               </div>
 
               {/* Visual Before vs After Exposure Bar */}
-              <div className="space-y-2 rounded-xl border border-white/12 bg-[#0B0A16]/75 p-3.5 text-xs">
-                <div className="flex items-center justify-between font-mono-tabular text-[11px] text-[#A7A3C7]">
+              <div className="space-y-2 rounded-xl border border-white/12 bg-[#0C1322]/75 p-3.5 text-xs">
+                <div className="flex items-center justify-between font-mono-tabular text-[11px] text-[#9FB0C7]">
                   <span>{isHi ? 'सामान्य संपर्क' : 'Baseline routine dose'}</span>
                   <span>~{result.estimatedBaselineDoseIndex} µg/m³ eq.</span>
                 </div>
@@ -314,7 +322,7 @@ export function WhatIfCalculator({ snapshot, profile }: WhatIfCalculatorProps) {
                 </div>
               </div>
 
-              <p className="text-xs text-[#A7A3C7] leading-relaxed">
+              <p className="text-xs text-[#9FB0C7] leading-relaxed">
                 {result.assumptionsAndLimits}
               </p>
             </div>
@@ -323,7 +331,7 @@ export function WhatIfCalculator({ snapshot, profile }: WhatIfCalculatorProps) {
               type="button"
               aria-expanded={showFormulas}
               onClick={() => setShowFormulas((prev) => !prev)}
-              className="mt-4 inline-flex min-h-[42px] items-center justify-between rounded-xl bg-[#67E8F9] px-4 py-2 text-xs font-bold text-[#0B0A16] hover:bg-[#A5F3FC]"
+              className="mt-4 inline-flex min-h-[42px] items-center justify-between rounded-xl bg-[#38BDF8] px-4 py-2 text-xs font-bold text-[#0C1322] hover:bg-[#7DD3FC]"
             >
               <span>{t(lang, 'howCalculated')}</span>
               {showFormulas ? (
@@ -341,7 +349,7 @@ export function WhatIfCalculator({ snapshot, profile }: WhatIfCalculatorProps) {
               {isHi ? 'चयनित विकल्पों का गणना विवरण' : 'Step-by-Step Formula Breakdown'}
             </h3>
             {result.breakdown.length === 0 ? (
-              <p className="text-xs text-[#A7A3C7]">
+              <p className="text-xs text-[#9FB0C7]">
                 {isHi
                   ? 'गणना देखने के लिए ऊपर कम से कम एक विकल्प चुनें।'
                   : 'Select at least one toggle above to inspect the calculation steps.'}
@@ -351,7 +359,7 @@ export function WhatIfCalculator({ snapshot, profile }: WhatIfCalculatorProps) {
                 {result.breakdown.map((step) => (
                   <li
                     key={step.key}
-                    className="rounded-xl border border-white/10 bg-[#0B0A16]/85 p-3.5 text-xs text-[#A7A3C7]"
+                    className="rounded-xl border border-white/10 bg-[#0C1322]/85 p-3.5 text-xs text-[#9FB0C7]"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2 font-semibold text-[#E6EDF7]">
                       <span>{step.label}</span>
@@ -359,7 +367,7 @@ export function WhatIfCalculator({ snapshot, profile }: WhatIfCalculatorProps) {
                         -{step.exposureReductionPct}% dose · {(step.co2SavedKgPerWeek * scaleFactor).toFixed(1)} kg CO2/wk
                       </span>
                     </div>
-                    <p className="mt-1 font-mono-tabular text-[11px] text-[#A7A3C7] leading-relaxed">
+                    <p className="mt-1 font-mono-tabular text-[11px] text-[#9FB0C7] leading-relaxed">
                       {step.formula}
                     </p>
                   </li>

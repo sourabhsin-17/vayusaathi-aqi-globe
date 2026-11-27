@@ -170,8 +170,8 @@ const MAJOR_RIVER_PATHS: Array<{ widthPx: number; pts: Array<[number, number]> }
 export function createRealisticEarthTextures(maxAnisotropy: number): EarthTextureBundle {
   const fullW = 2048;
   const fullH = 1024;
-  const synthW = 1536;
-  const synthH = 768;
+  const synthW = 2048;
+  const synthH = 1024;
 
   const topology = countries50mRaw as unknown as WorldAtlasTopology;
   const landGeo = feature(topology, topology.objects.land);
@@ -368,19 +368,19 @@ export function createRealisticEarthTextures(maxAnisotropy: number): EarthTextur
         ellipseWeight(lng, lat, 73, 7, 3.5, 8) * 0.45 + // Lakshadweep/Maldives
         ellipseWeight(lng, lat, 110, 4, 15, 11) * 0.5; // Sundaland Shallow Sea
 
-      const shallow = clamp01(shelfFactor * 1.48 - landFactor * 0.82 + reefShelves * 0.45);
+      const shallow = clamp01(shelfFactor * 1.55 - landFactor * 0.8 + reefShelves * 0.55);
       const polarSeaIce = clamp01((absLat - 76) / 11 + (macroNoise - 0.54) * 0.35);
 
-      let oR = lerp(5, 14, oceanSwell) - abyssalTrenches * 4 + midOceanRidges * 4 + shallow * 22;
-      let oG = lerp(22, 48, oceanSwell) - abyssalTrenches * 10 + midOceanRidges * 10 + shallow * 74;
-      let oB = lerp(52, 92, oceanSwell) - abyssalTrenches * 16 + midOceanRidges * 14 + shallow * 82;
+      let oR = lerp(4, 13, oceanSwell) - abyssalTrenches * 4 + midOceanRidges * 4 + shallow * 26;
+      let oG = lerp(24, 56, oceanSwell) - abyssalTrenches * 11 + midOceanRidges * 10 + shallow * 86;
+      let oB = lerp(60, 108, oceanSwell) - abyssalTrenches * 18 + midOceanRidges * 16 + shallow * 92;
 
       if (polarSeaIce > 0.12) {
         const fracture = 0.72 + 0.28 * ridgeNoise;
         const iceMix = clamp01((polarSeaIce - 0.12) * 1.15);
-        oR = lerp(oR, 198 * fracture, iceMix);
-        oG = lerp(oG, 220 * fracture, iceMix);
-        oB = lerp(oB, 238 * fracture, iceMix);
+        oR = lerp(oR, 206 * fracture, iceMix);
+        oG = lerp(oG, 226 * fracture, iceMix);
+        oB = lerp(oB, 244 * fracture, iceMix);
       }
 
       od[rgbaIdx] = Math.max(0, Math.min(255, Math.round(oR)));
@@ -469,7 +469,7 @@ export function createRealisticEarthTextures(maxAnisotropy: number): EarthTextur
         lB = lerp(lB, 250 * iceCrevasse, sMix);
       }
 
-      const reliefShade = 0.87 + elevation * 0.24;
+      const reliefShade = 0.85 + elevation * 0.28;
       bd[rgbaIdx] = Math.min(255, Math.round(lR * reliefShade));
       bd[rgbaIdx + 1] = Math.min(255, Math.round(lG * reliefShade));
       bd[rgbaIdx + 2] = Math.min(255, Math.round(lB * reliefShade));
@@ -483,11 +483,11 @@ export function createRealisticEarthTextures(maxAnisotropy: number): EarthTextur
         abyssalTrenches * 0.06;
       heightField[pIdx] = lerp(oceanDepth, 0.24 + elevation * 0.76, landFactor);
 
-      // Physical PBR roughness: sun-specular ocean (68..86), wet riverbeds, rough forest/sand/rock
-      const oceanRough = 68 + oceanSwell * 16 + (polarSeaIce > 0.28 ? 64 : 0);
+      // Physical PBR roughness: crisp sun-glint ocean (40..58), matte land & alpine snow
+      const oceanRough = 40 + oceanSwell * 16 + (polarSeaIce > 0.28 ? 92 : 0);
       const landRough =
-        lerp(222, 138, snowLine) - forestDensity * 20 - (riverFactor > 0.7 ? 70 : 0);
-      const rVal = Math.round(lerp(oceanRough, Math.max(110, Math.min(244, landRough)), landFactor));
+        lerp(228, 148, snowLine) - forestDensity * 18 - (riverFactor > 0.7 ? 75 : 0);
+      const rVal = Math.round(lerp(oceanRough, Math.max(118, Math.min(246, landRough)), landFactor));
       rd[rgbaIdx] = rVal;
       rd[rgbaIdx + 1] = rVal;
       rd[rgbaIdx + 2] = rVal;
@@ -514,7 +514,7 @@ export function createRealisticEarthTextures(maxAnisotropy: number): EarthTextur
   const bumpImg = bmCtx.createImageData(synthW, synthH);
   const bmd = bumpImg.data;
 
-  const normalStrength = 5.4;
+  const normalStrength = 6.8;
   for (let y = 0; y < synthH; y += 1) {
     const ym1 = Math.max(0, y - 1);
     const yp1 = Math.min(synthH - 1, y + 1);
@@ -710,10 +710,10 @@ export function createRealisticEarthTextures(maxAnisotropy: number): EarthTextur
       const cirrus = fbm2D((nx + warpX) * 0.75, (ny + warpY * 0.3) * 2.6, Math.round(cPeriod * 0.75), 379, 3);
       const swirl = cumulus * 0.72 + cirrus * 0.28 + stormBelt;
       const idx = (y * synthW + x) * 4;
-      const density = clamp01((swirl - 0.52) / 0.29);
-      const alpha = Math.round(Math.pow(density, 1.32) * 238);
-      cld[idx] = 248;
-      cld[idx + 1] = 251;
+      const density = clamp01((swirl - 0.56) / 0.25);
+      const alpha = Math.round(Math.pow(density, 1.48) * 224);
+      cld[idx] = 250;
+      cld[idx + 1] = 252;
       cld[idx + 2] = 255;
       cld[idx + 3] = alpha;
     }

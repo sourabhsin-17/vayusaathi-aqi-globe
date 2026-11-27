@@ -5,17 +5,17 @@
     --font-display: "Bricolage Grotesque", "Noto Sans Devanagari", system-ui, sans-serif;
     --font-body: "Plus Jakarta Sans", "Noto Sans Devanagari", system-ui, sans-serif;
     --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-    --surface-canvas: #06050e;
-    --surface-graphite: #0b0a16;
-    --surface-card: #0f0d22;
-    --surface-indigo: #14122e;
-    --surface-elevated: #19163a;
-    --border-hairline: rgba(230, 237, 247, 0.12);
-    --accent-cyan: #67e8f9;
-    --accent-violet: #8b5cf6;
+    --surface-canvas: #070b12;
+    --surface-graphite: #0c1322;
+    --surface-card: #101a2c;
+    --surface-indigo: #142138;
+    --surface-elevated: #182947;
+    --border-hairline: rgba(203, 219, 238, 0.12);
+    --accent-cyan: #38bdf8;
+    --accent-violet: #2dd4bf;
     --accent-emerald: #5dcaa5;
     --ink-primary: #e6edf7;
-    --ink-muted: #a7a3c7;
+    --ink-muted: #9fb0c7;
   }
 
   html {
@@ -44,40 +44,40 @@
   }
 
   :focus-visible {
-    outline: 2px solid #67e8f9;
+    outline: 2px solid #38bdf8;
     outline-offset: 2px;
   }
 }
 
-/* Reference-inspired atmospheric dot-grid & subtle indigo/cyan radial ambiance */
+/* Stratospheric Slate atmospheric dot-grid & subtle cerulean/teal ambient horizon glow */
 .bg-dot-grid {
-  background-image: radial-gradient(rgba(230, 237, 247, 0.085) 1.5px, transparent 1.5px);
+  background-image: radial-gradient(rgba(203, 219, 238, 0.08) 1.5px, transparent 1.5px);
   background-size: 24px 24px;
 }
 
 .section-electric-glow {
   background-image:
-    radial-gradient(at 85% 12%, rgba(139, 92, 246, 0.13), transparent 42%),
-    radial-gradient(at 8% 88%, rgba(103, 232, 249, 0.09), transparent 38%);
+    radial-gradient(at 85% 10%, rgba(56, 189, 248, 0.11), transparent 44%),
+    radial-gradient(at 10% 88%, rgba(45, 212, 191, 0.08), transparent 40%);
 }
 
 .obsidian-surface {
   background: linear-gradient(
       145deg,
-      rgba(255, 255, 255, 0.045) 0%,
-      rgba(255, 255, 255, 0.012) 48%,
-      rgba(139, 92, 246, 0.025) 100%
+      rgba(255, 255, 255, 0.04) 0%,
+      rgba(255, 255, 255, 0.01) 50%,
+      rgba(56, 189, 248, 0.03) 100%
     ),
-    #0f0d22;
-  border: 1px solid rgba(230, 237, 247, 0.12);
+    #101a2c;
+  border: 1px solid rgba(203, 219, 238, 0.12);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
     0 16px 36px -16px rgba(0, 0, 0, 0.65);
 }
 
-/* Smooth range slider accent in cosmic cyan */
+/* Smooth range slider accent in glacier sky */
 input[type="range"] {
-  accent-color: #67e8f9;
+  accent-color: #38bdf8;
 }
 
 /* All-ages comfortable reading mode (Large & Simple) */

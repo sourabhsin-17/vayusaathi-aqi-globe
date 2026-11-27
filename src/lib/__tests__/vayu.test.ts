@@ -14,6 +14,13 @@ import {
 } from '../cpcb';
 import { generateFallbackAdvisory, generateFallbackAssistantReply } from '../fallbackEngine';
 import {
+  buildFallbackCoordinateLocation,
+  clearSentHealthNotifications,
+  evaluateHealthWarning,
+  findNearestMonitoredCity,
+  hasSentHealthNotification,
+} from '../geolocationService';
+import {
   computeUtcSunSubsolarCoords,
   latLngToVector3Coords,
   vector3ToLatLngCoords,
@@ -641,5 +648,124 @@ describe('3D Globe Spherical Coordinate Projections', () => {
     expect(subsolar.lng).toBeCloseTo(0, 1);
   });
 });
+
+describe('Instant GPS Area Resolution & Health Warning Thresholds', () => {
+  it('resolves exact nearest monitored area label from GPS coordinates', () => {
+    const nearBengaluru = findNearestMonitoredCity(12.9716, 77.5946);
+    expect(nearBengaluru.city.name).toBe('Bengaluru');
+    expect(nearBengaluru.distanceKm).toBeLessThan(5);
+
+    const loc = buildFallbackCoordinateLocation(12.9716, 77.5946, 'en', 24);
+    expect(loc.isCurrentLocation).toBe(true);
+    expect(loc.name).toContain('Bengaluru');
+    expect(loc.accuracyMeters).toBe(24);
+  });
+
+  it('triggers health warnings across elevated, high, and critical AQI thresholds and stays quiet when air is good', () => {
+    const lowRiskProfile: HouseholdProfile = {
+      ...SAMPLE_PERSONAS[1].profile,
+      members: {
+        childrenUnder12: false,
+        schoolAgeKids: false,
+        elderly60Plus: false,
+        workingProfessionals: true,
+        outdoorWorkers: false,
+        respiratoryOrCardiacSensitive: false,
+      },
+    };
+
+    const goodSnap = buildTestSnapshot('Bengaluru', 8, 18, 35);
+    expect(evaluateHealthWarning(goodSnap, lowRiskProfile, 'en')).toBeNull();
+
+    const elevatedSnap = buildTestSnapshot('Jaipur', 48, 95, 132);
+    const elevatedWarn = evaluateHealthWarning(elevatedSnap, lowRiskProfile, 'en');
+    expect(elevatedWarn?.severity).toBe('elevated');
+
+    const criticalSnap = buildTestSnapshot('Delhi', 185, 290, 238);
+    const criticalWarn = evaluateHealthWarning(criticalSnap, lowRiskProfile, 'en');
+    expect(criticalWarn?.severity).toBe('critical');
+    expect(criticalWarn?.immediateActions.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('tracks and clears health notification dedupe state cleanly', () => {
+    clearSentHealthNotifications();
+    expect(hasSentHealthNotification('in-delhi', 'critical')).toBe(false);
+  });
+
+  it('preserves null current weather instead of fabricating 0°C / 0% / 0 km/h when telemetry is missing', async () => {
+    clearAirQualityCache();
+    const hours24 = Array.from({ length: 24 }, (_, i) => `2026-11-26T${String(i).padStart(2, '0')}:00`);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL) => {
+        const url = String(input);
+        if (url.includes('air-quality-api')) {
+          return new Response(
+            JSON.stringify({
+              latitude: 28.61,
+              longitude: 77.21,
+              timezone: 'Asia/Kolkata',
+              current: {
+                time: '2026-11-26T08:00',
+                us_aqi: 95,
+                pm2_5: 33,
+                pm10: 60,
+                nitrogen_dioxide: 25,
+                ozone: 38,
+                sulphur_dioxide: 8,
+                carbon_monoxide: 400,
+              },
+              hourly: {
+                time: hours24,
+                pm2_5: Array(24).fill(33),
+                pm10: Array(24).fill(60),
+                us_aqi: Array(24).fill(95),
+                nitrogen_dioxide: Array(24).fill(25),
+                ozone: Array(24).fill(38),
+                sulphur_dioxide: Array(24).fill(8),
+                carbon_monoxide: Array(24).fill(400),
+              },
+            }),
+            { status: 200 }
+          );
+        }
+        if (url.includes('api.open-meteo.com')) {
+          return new Response(
+            JSON.stringify({
+              latitude: 28.61,
+              longitude: 77.21,
+              timezone: 'Asia/Kolkata',
+              current: {
+                time: '2026-11-26T08:00',
+                temperature_2m: null,
+                relative_humidity_2m: null,
+                wind_speed_10m: null,
+              },
+              hourly: {
+                time: hours24,
+                temperature_2m: Array(24).fill(null),
+                relative_humidity_2m: Array(24).fill(null),
+                wind_speed_10m: Array(24).fill(null),
+              },
+            }),
+            { status: 200 }
+          );
+        }
+        return new Response('[]', { status: 200 });
+      })
+    );
+
+    const snap = await fetchLiveAirAndWeather(
+      { id: 'in-delhi', name: 'Delhi', state: 'Delhi NCR', latitude: 28.6139, longitude: 77.209 },
+      { forceRefresh: true }
+    );
+    expect(snap.weather.temperatureC).toBeNull();
+    expect(snap.weather.humidityPct).toBeNull();
+    expect(snap.weather.windSpeedKmh).toBeNull();
+    vi.unstubAllGlobals();
+    clearAirQualityCache();
+  });
+});
+
 
 

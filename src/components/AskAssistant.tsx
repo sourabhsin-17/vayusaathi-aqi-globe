@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { MessageSquare, Send, ShieldAlert, Sparkles } from 'lucide-react';
 import { formatObservationTimestamp } from '../lib/airQualityService';
 import { t } from '../lib/i18n';
@@ -15,6 +15,23 @@ export function AskAssistant({ snapshot, profile }: AskAssistantProps) {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sending, setSending] = useState(false);
+  const [askError, setAskError] = useState<string | null>(null);
+  const requestSeqRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    requestSeqRef.current += 1;
+    setMessages([]);
+    setAskError(null);
+    setSending(false);
+  }, [snapshot.location.id]);
 
   const quickQuestions =
     lang === 'hi'
@@ -33,6 +50,7 @@ export function AskAssistant({ snapshot, profile }: AskAssistantProps) {
     const trimmed = questionText.trim();
     if (!trimmed || sending) return;
 
+    const seq = ++requestSeqRef.current;
     const userMsg: ChatMessage = {
       id: `u-${Date.now()}`,
       role: 'user',
@@ -41,10 +59,12 @@ export function AskAssistant({ snapshot, profile }: AskAssistantProps) {
     };
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
+    setAskError(null);
     setSending(true);
 
     try {
       const reply = await askAssistantQuestion(trimmed, snapshot, profile);
+      if (!mountedRef.current || seq !== requestSeqRef.current) return;
       const assistantMsg: ChatMessage = {
         id: `a-${Date.now()}`,
         role: 'assistant',
@@ -53,8 +73,19 @@ export function AskAssistant({ snapshot, profile }: AskAssistantProps) {
         createdAtIso: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, assistantMsg]);
+    } catch (err) {
+      if (!mountedRef.current || seq !== requestSeqRef.current) return;
+      setAskError(
+        err instanceof Error
+          ? err.message
+          : lang === 'hi'
+          ? 'उत्तर प्राप्त करने में समस्या आई। कृपया पुनः प्रयास करें।'
+          : 'Could not get an answer right now. Please try again.'
+      );
     } finally {
-      setSending(false);
+      if (mountedRef.current && seq === requestSeqRef.current) {
+        setSending(false);
+      }
     }
   };
 
@@ -67,14 +98,14 @@ export function AskAssistant({ snapshot, profile }: AskAssistantProps) {
     <section id="assistant" aria-label={t(lang, 'assistantTitle')} className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <p className="font-mono-tabular text-[11px] font-semibold uppercase tracking-wider text-[#67E8F9]">
+          <p className="font-mono-tabular text-[11px] font-semibold uppercase tracking-wider text-[#38BDF8]">
             10. {lang === 'hi' ? 'प्रत्यक्ष प्रश्नोत्तर' : 'Verified Q&A'}
           </p>
           <h2 className="text-2xl font-semibold tracking-tight text-[#E6EDF7] font-display">
             {t(lang, 'assistantTitle')}
           </h2>
         </div>
-        <span className="text-xs text-[#A7A3C7]">
+        <span className="text-xs text-[#9FB0C7]">
           {lang === 'hi'
             ? 'हर उत्तर लाइव डेटा स्रोत, समय और AQI मान का हवाला देता है'
             : 'Every reply cites live source, observation timestamp, and AQI value'}
@@ -83,15 +114,15 @@ export function AskAssistant({ snapshot, profile }: AskAssistantProps) {
 
       <div className="obsidian-surface rounded-3xl p-6 space-y-5">
         {/* Grounding Context Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/12 bg-[#0B0A16]/85 px-4 py-2.5 text-xs text-[#A7A3C7]">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/12 bg-[#0C1322]/85 px-4 py-2.5 text-xs text-[#9FB0C7]">
           <div className="flex items-center gap-2 font-medium text-[#E6EDF7]">
-            <Sparkles className="h-3.5 w-3.5 text-[#67E8F9]" aria-hidden="true" />
+            <Sparkles className="h-3.5 w-3.5 text-[#38BDF8]" aria-hidden="true" />
             <span>
               {lang === 'hi' ? 'लाइव संदर्भ सक्रिय:' : 'Grounded in live telemetry:'}{' '}
-              <strong className="font-semibold text-[#67E8F9]">{snapshot.location.name}</strong>
+              <strong className="font-semibold text-[#38BDF8]">{snapshot.location.name}</strong>
             </span>
           </div>
-          <div className="flex flex-wrap items-center gap-3 font-mono-tabular text-[11px] text-[#A7A3C7]">
+          <div className="flex flex-wrap items-center gap-3 font-mono-tabular text-[11px] text-[#9FB0C7]">
             <span>US AQI {snapshot.current.usAqi}</span>
             <span>PM2.5 {snapshot.current.pm25} µg/m³</span>
             <span className="text-[#5DCAA5]">
@@ -108,9 +139,9 @@ export function AskAssistant({ snapshot, profile }: AskAssistantProps) {
               type="button"
               disabled={sending}
               onClick={() => void submitQuestion(q)}
-              className="min-h-[44px] rounded-2xl border border-white/12 bg-[#0B0A16]/85 px-4 py-2.5 text-left text-xs font-semibold text-[#E6EDF7] transition-colors hover:border-[#67E8F9] hover:bg-[#14163F] disabled:opacity-60"
+              className="min-h-[44px] rounded-2xl border border-white/12 bg-[#0C1322]/85 px-4 py-2.5 text-left text-xs font-semibold text-[#E6EDF7] transition-colors hover:border-[#38BDF8] hover:bg-[#182947] disabled:opacity-60"
             >
-              <span className="block font-mono-tabular text-[10px] font-semibold uppercase tracking-wider text-[#67E8F9] mb-0.5">
+              <span className="block font-mono-tabular text-[10px] font-semibold uppercase tracking-wider text-[#38BDF8] mb-0.5">
                 0{idx + 1}. {lang === 'hi' ? 'त्वरित प्रश्न' : 'Ask prompt'}
               </span>
               {q}
@@ -124,8 +155,8 @@ export function AskAssistant({ snapshot, profile }: AskAssistantProps) {
           className="space-y-4 max-h-[420px] overflow-y-auto pr-1"
         >
           {messages.length === 0 ? (
-            <div className="flex items-start gap-3 rounded-2xl border border-[#67E8F9]/25 bg-[#14163F] p-4 text-sm text-[#E6EDF7]">
-              <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-[#67E8F9]" aria-hidden="true" />
+            <div className="flex items-start gap-3 rounded-2xl border border-[#38BDF8]/25 bg-[#182947] p-4 text-sm text-[#E6EDF7]">
+              <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-[#38BDF8]" aria-hidden="true" />
               <p className="text-[#E6EDF7]/90">
                 {lang === 'hi'
                   ? `${snapshot.location.name} (US AQI ${snapshot.current.usAqi}) और आपकी प्रोफ़ाइल के अनुसार कोई भी सवाल पूछें।`
@@ -138,11 +169,11 @@ export function AskAssistant({ snapshot, profile }: AskAssistantProps) {
                 key={msg.id}
                 className={`rounded-2xl border p-4 ${
                   msg.role === 'user'
-                    ? 'ml-auto max-w-2xl border-[#67E8F9]/35 bg-[#14163F] text-[#E6EDF7]'
-                    : 'mr-auto max-w-3xl border-white/12 bg-[#0B0A16]/90 text-[#E6EDF7]'
+                    ? 'ml-auto max-w-2xl border-[#38BDF8]/35 bg-[#182947] text-[#E6EDF7]'
+                    : 'mr-auto max-w-3xl border-white/12 bg-[#0C1322]/90 text-[#E6EDF7]'
                 }`}
               >
-                <p className={`text-xs font-semibold ${msg.role === 'user' ? 'text-[#67E8F9]' : 'text-[#5DCAA5]'}`}>
+                <p className={`text-xs font-semibold ${msg.role === 'user' ? 'text-[#38BDF8]' : 'text-[#5DCAA5]'}`}>
                   {msg.role === 'user'
                     ? lang === 'hi'
                       ? 'आप'
@@ -154,7 +185,7 @@ export function AskAssistant({ snapshot, profile }: AskAssistantProps) {
                 </p>
 
                 {msg.replyMeta ? (
-                  <div className="mt-3 space-y-1.5 border-t border-white/10 pt-2.5 text-[11px] text-[#A7A3C7]">
+                  <div className="mt-3 space-y-1.5 border-t border-white/10 pt-2.5 text-[11px] text-[#9FB0C7]">
                     {msg.replyMeta.promptGuardTriggered ? (
                       <p className="flex items-center gap-1.5 font-semibold text-amber-300">
                         <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />
@@ -169,7 +200,7 @@ export function AskAssistant({ snapshot, profile }: AskAssistantProps) {
                     <p>
                       <strong className="text-[#E6EDF7]">{t(lang, 'limitsLabel')}:</strong> {msg.replyMeta.limitations}
                     </p>
-                    <p className="text-[#A7A3C7]/85">
+                    <p className="text-[#9FB0C7]/85">
                       {msg.replyMeta.generalGuidanceNote} ({msg.replyMeta.mode === 'ai' ? 'AI' : 'Basic rule-based mode'})
                     </p>
                   </div>
@@ -179,8 +210,13 @@ export function AskAssistant({ snapshot, profile }: AskAssistantProps) {
           )}
 
           {sending ? (
-            <p className="text-xs text-[#67E8F9]">
+            <p className="text-xs text-[#38BDF8]">
               {lang === 'hi' ? 'लाइव डेटा की जांच कर रहा है...' : 'Checking live readings and your profile...'}
+            </p>
+          ) : null}
+          {askError ? (
+            <p role="alert" className="rounded-xl border border-rose-400/35 bg-rose-500/15 px-3.5 py-2 text-xs text-rose-200">
+              {askError}
             </p>
           ) : null}
         </div>
@@ -197,14 +233,14 @@ export function AskAssistant({ snapshot, profile }: AskAssistantProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={t(lang, 'assistantPlaceholder')}
-            className="flex-1 min-h-[44px] rounded-xl border border-white/12 bg-[#0B0A16] px-4 text-sm text-[#E6EDF7] placeholder:text-[#A7A3C7]/70 focus:border-[#67E8F9] focus:bg-[#14122E] focus:outline-none"
+            className="flex-1 min-h-[44px] rounded-xl border border-white/12 bg-[#0C1322] px-4 text-sm text-[#E6EDF7] placeholder:text-[#9FB0C7]/70 focus:border-[#38BDF8] focus:bg-[#142138] focus:outline-none"
           />
           <button
             type="submit"
             disabled={sending || input.trim().length < 2}
-            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[#67E8F9] px-5 py-2 text-sm font-bold text-[#0B0A16] hover:bg-[#A5F3FC] disabled:opacity-50 whitespace-nowrap shrink-0"
+            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[#38BDF8] px-5 py-2 text-sm font-bold text-[#0C1322] hover:bg-[#7DD3FC] disabled:opacity-50 whitespace-nowrap shrink-0"
           >
-            <Send className="h-4 w-4 text-[#0B0A16]" aria-hidden="true" />
+            <Send className="h-4 w-4 text-[#0C1322]" aria-hidden="true" />
             <span>{t(lang, 'sendQuestion')}</span>
           </button>
         </form>
