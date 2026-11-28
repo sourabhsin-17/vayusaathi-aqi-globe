@@ -765,6 +765,34 @@ describe('Instant GPS Area Resolution & Health Warning Thresholds', () => {
     vi.unstubAllGlobals();
     clearAirQualityCache();
   });
+
+  it('transitions atmospheric overlay from initial clouds to wind-only (<10), medium clouds+smog (50-150), and high smog+clouds (>150)', async () => {
+    const { getAtmosphereEffectProfile } = await import('../atmosphereMode');
+
+    const onOpen = getAtmosphereEffectProfile(undefined);
+    expect(onOpen.mode).toBe('initial_clouds');
+    expect(onOpen.cloudDensity).toBeGreaterThan(0.5);
+    expect(onOpen.smogDensity).toBe(0);
+
+    const ultraClean = getAtmosphereEffectProfile(8);
+    expect(ultraClean.mode).toBe('wind_only');
+    expect(ultraClean.cloudDensity).toBe(0);
+    expect(ultraClean.smogDensity).toBe(0);
+    expect(ultraClean.windDensity).toBe(1);
+
+    const medium = getAtmosphereEffectProfile(95);
+    expect(medium.mode).toBe('medium_clouds_smog');
+    expect(medium.cloudDensity).toBeGreaterThan(0.3);
+    expect(medium.cloudDensity).toBeLessThan(0.75);
+    expect(medium.smogDensity).toBeGreaterThan(0.2);
+    expect(medium.smogDensity).toBeLessThan(0.7);
+
+    const high = getAtmosphereEffectProfile(220);
+    expect(high.mode).toBe('high_smog_clouds');
+    expect(high.cloudDensity).toBeGreaterThan(0.8);
+    expect(high.smogDensity).toBeGreaterThan(0.8);
+    expect(high.windDensity).toBe(0);
+  });
 });
 
 

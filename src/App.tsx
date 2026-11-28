@@ -448,7 +448,10 @@ export default function App() {
   return (
     <ErrorBoundary>
       <MotionConfig reducedMotion="user">
-        <AtmosphericDriftLayer usAqi={snapshot?.current.usAqi} />
+        <AtmosphericDriftLayer
+          usAqi={snapshot?.current.usAqi}
+          windSpeedKmh={snapshot?.weather.windSpeedKmh}
+        />
         <div
           className={`relative min-h-screen overflow-x-clip bg-[#070B12] bg-dot-grid section-electric-glow text-[#E6EDF7] flex flex-col ${
             easyRead ? 'easy-read' : ''

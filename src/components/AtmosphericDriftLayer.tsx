@@ -1,13 +1,16 @@
 import { useEffect, useRef } from 'react';
+import { getAtmosphereEffectProfile } from '../lib/atmosphereMode';
 
 interface AtmosphericDriftLayerProps {
-  usAqi?: number;
+  usAqi?: number | null;
+  windSpeedKmh?: number | null;
 }
 
 type ParticleKind = 'cloud' | 'fog';
 
 interface AtmosphericParticle {
   kind: ParticleKind;
+  slotRatio: number; // 0..1 threshold to smoothly control density per AQI level
   xRatio: number;
   yRatio: number;
   vx: number;
@@ -16,6 +19,19 @@ interface AtmosphericParticle {
   alpha: number;
   parallax: number;
   spriteIdx: number;
+}
+
+interface WindStream {
+  slotRatio: number;
+  xRatio: number;
+  yRatio: number;
+  vx: number;
+  length: number;
+  thickness: number;
+  alpha: number;
+  curveAmp: number;
+  parallax: number;
+  hasCurl: boolean;
 }
 
 function createCloudSprite(tintRgb: string, variant: number): HTMLCanvasElement {
@@ -99,16 +115,79 @@ function createFogSprite(tintRgb: string): HTMLCanvasElement {
   return c;
 }
 
+function drawWindStream(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  stream: WindStream,
+  alphaScale: number
+) {
+  const halfLen = stream.length / 2;
+  const xStart = x - halfLen;
+  const xEnd = x + halfLen;
+  const effectiveAlpha = stream.alpha * alphaScale;
+  if (effectiveAlpha <= 0.008) return;
+
+  const grad = ctx.createLinearGradient(xStart, y, xEnd, y);
+  grad.addColorStop(0, 'rgba(186, 230, 253, 0)');
+  grad.addColorStop(0.28, `rgba(186, 230, 253, ${effectiveAlpha * 0.75})`);
+  grad.addColorStop(0.62, `rgba(224, 242, 254, ${effectiveAlpha})`);
+  grad.addColorStop(1, 'rgba(186, 230, 253, 0)');
+
+  ctx.save();
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = stream.thickness;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(xStart, y);
+  ctx.bezierCurveTo(
+    xStart + stream.length * 0.33,
+    y - stream.curveAmp,
+    xStart + stream.length * 0.67,
+    y + stream.curveAmp,
+    xEnd,
+    y
+  );
+
+  if (stream.hasCurl) {
+    const dir = stream.vx >= 0 ? 1 : -1;
+    const tipX = dir > 0 ? xEnd - 8 : xStart + 8;
+    ctx.moveTo(tipX, y);
+    ctx.quadraticCurveTo(
+      tipX + dir * 10,
+      y - 10,
+      tipX - dir * 3,
+      y - 14
+    );
+  }
+
+  ctx.stroke();
+  ctx.restore();
+}
+
 /**
- * Full-page atmospheric cloud & fog overlay.
- * Uses normalized 0..1 vertical distribution + ResizeObserver + smooth scroll
- * wrap so larger clouds and fog bands remain visible across the entire page
- * (top, middle, and bottom) drifting horizontally left-to-right and right-to-left.
+ * Full-page AQI-responsive atmospheric layer:
+ * - On initial open (`usAqi` undefined): clean drifting clouds across the whole page
+ * - `usAqi < 10`: wind streamlines only (no clouds, no smog)
+ * - `10..49`: light breeze + sparse crisp clouds
+ * - `50..150` (medium): moderate clouds + light smog bands
+ * - `> 150` (high): dense clouds + heavier smog haze
  */
-export function AtmosphericDriftLayer({ usAqi = 65 }: AtmosphericDriftLayerProps) {
+export function AtmosphericDriftLayer({
+  usAqi,
+  windSpeedKmh,
+}: AtmosphericDriftLayerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const aqiRef = useRef<number>(usAqi);
+  const aqiRef = useRef<number | null | undefined>(usAqi);
+  const windRef = useRef<number | null | undefined>(windSpeedKmh);
+  const redrawRef = useRef<(() => void) | null>(null);
+
   aqiRef.current = usAqi;
+  windRef.current = windSpeedKmh;
+
+  useEffect(() => {
+    redrawRef.current?.();
+  }, [usAqi, windSpeedKmh]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -167,22 +246,25 @@ export function AtmosphericDriftLayer({ usAqi = 65 }: AtmosphericDriftLayerProps
       createCloudSprite('234, 194, 158', 2),
     ];
     const coolFog = createFogSprite('216, 236, 255');
-    const warmFog = createFogSprite('236, 198, 158');
+    const warmFog = createFogSprite('236, 194, 150');
 
     // Normalized vertical lanes cover 100% of the height evenly regardless of resize timing
-    const totalCount = 42;
+    const totalCloudsAndFog = 42;
     const particles: AtmosphericParticle[] = [];
 
-    for (let i = 0; i < totalCount; i++) {
+    for (let i = 0; i < totalCloudsAndFog; i++) {
       const kind: ParticleKind = i % 2 === 0 ? 'cloud' : 'fog';
       const dirX = i % 2 === 0 ? 1 : -1;
-      const laneCenter = (i + 0.5) / totalCount;
+      const laneCenter = (i + 0.5) / totalCloudsAndFog;
       const yRatio = Math.min(0.98, Math.max(0.02, laneCenter + (Math.random() - 0.5) * 0.03));
+      // Scrambled deterministic slot threshold so partial densities still span top-to-bottom evenly
+      const slotRatio = ((i * 7) % totalCloudsAndFog) / totalCloudsAndFog;
 
       if (kind === 'cloud') {
         const w = 135 + Math.random() * 145;
         particles.push({
           kind,
+          slotRatio,
           xRatio: Math.random(),
           yRatio,
           vx: dirX * (0.3 + Math.random() * 0.45),
@@ -196,6 +278,7 @@ export function AtmosphericDriftLayer({ usAqi = 65 }: AtmosphericDriftLayerProps
         const w = 220 + Math.random() * 210;
         particles.push({
           kind,
+          slotRatio,
           xRatio: Math.random(),
           yRatio,
           vx: dirX * (0.34 + Math.random() * 0.52),
@@ -208,63 +291,153 @@ export function AtmosphericDriftLayer({ usAqi = 65 }: AtmosphericDriftLayerProps
       }
     }
 
+    const totalWindStreams = 30;
+    const windStreams: WindStream[] = [];
+    for (let i = 0; i < totalWindStreams; i++) {
+      const dirX = i % 5 === 0 ? -1 : 1;
+      const laneCenter = (i + 0.5) / totalWindStreams;
+      windStreams.push({
+        slotRatio: ((i * 7) % totalWindStreams) / totalWindStreams,
+        xRatio: Math.random(),
+        yRatio: Math.min(0.97, Math.max(0.03, laneCenter + (Math.random() - 0.5) * 0.025)),
+        vx: dirX * (1.25 + Math.random() * 1.35),
+        length: 130 + Math.random() * 170,
+        thickness: 1.2 + Math.random() * 1.1,
+        alpha: 0.18 + Math.random() * 0.18,
+        curveAmp: (Math.random() > 0.5 ? 1 : -1) * (4 + Math.random() * 8),
+        parallax: 0.1 + Math.random() * 0.12,
+        hasCurl: i % 3 === 0,
+      });
+    }
+
+    const initialProfile = getAtmosphereEffectProfile(aqiRef.current);
+    let smoothCloud = initialProfile.cloudDensity;
+    let smoothSmog = initialProfile.smogDensity;
+    let smoothWind = initialProfile.windDensity;
+    let smoothWarmth = initialProfile.smogWarmth;
+
     let rafId = 0;
     let lastTs = performance.now();
 
-    const drawFrame = (now: number) => {
+    const renderScene = (now: number, snapTransitions: boolean) => {
       const dt = Math.min(48, Math.max(8, now - lastTs)) / 16.6667;
       lastTs = now;
 
+      const target = getAtmosphereEffectProfile(aqiRef.current);
+      if (snapTransitions) {
+        smoothCloud = target.cloudDensity;
+        smoothSmog = target.smogDensity;
+        smoothWind = target.windDensity;
+        smoothWarmth = target.smogWarmth;
+      } else {
+        const lerpRate = Math.min(1, 0.06 * dt);
+        smoothCloud += (target.cloudDensity - smoothCloud) * lerpRate;
+        smoothSmog += (target.smogDensity - smoothSmog) * lerpRate;
+        smoothWind += (target.windDensity - smoothWind) * lerpRate;
+        smoothWarmth += (target.smogWarmth - smoothWarmth) * lerpRate;
+      }
+
       ctx.clearRect(0, 0, width, height);
 
-      const currentAqi = aqiRef.current;
-      const smogRatio = Math.min(1, Math.max(0, (currentAqi - 70) / 160));
-      const useWarmSmog = currentAqi > 130;
       const scrollY = typeof window !== 'undefined' ? window.scrollY || 0 : 0;
+      const windSpeedFactor =
+        typeof windRef.current === 'number' && Number.isFinite(windRef.current)
+          ? Math.min(1.8, Math.max(0.7, windRef.current / 10))
+          : 1;
 
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
-        const padX = p.width * 0.65 + 40;
-        const spanX = width + padX * 2;
+      // 1. Render crisp horizontal wind streamlines when clean (<10 AQI = wind only)
+      if (smoothWind > 0.01) {
+        for (let i = 0; i < windStreams.length; i++) {
+          const ws = windStreams[i];
+          const slotGain = Math.min(
+            1,
+            Math.max(0, (smoothWind - ws.slotRatio) * 4.5 + 0.15)
+          );
+          if (slotGain <= 0.01 && smoothWind < ws.slotRatio) continue;
 
-        if (!prefersReducedMotion) {
-          // Pure horizontal drift only (left-to-right or right-to-left)
-          p.xRatio += (p.vx * dt) / spanX;
-          if (p.xRatio > 1) {
-            p.xRatio -= 1;
-          } else if (p.xRatio < 0) {
-            p.xRatio += 1;
+          const padX = ws.length * 0.6 + 30;
+          const spanX = width + padX * 2;
+          if (!prefersReducedMotion) {
+            ws.xRatio += (ws.vx * windSpeedFactor * dt) / spanX;
+            if (ws.xRatio > 1) ws.xRatio -= 1;
+            else if (ws.xRatio < 0) ws.xRatio += 1;
           }
+
+          const x = ws.xRatio * spanX - padX;
+          const spanY = height + 40;
+          const rawY = ws.yRatio * spanY - scrollY * ws.parallax;
+          const y = (((rawY % spanY) + spanY) % spanY) - 20;
+
+          drawWindStream(ctx, x, y, ws, Math.min(1, smoothWind) * slotGain);
         }
+      }
 
-        const x = p.xRatio * spanX - padX;
-        const spanY = height + p.height * 1.4;
-        const rawY = p.yRatio * spanY - scrollY * p.parallax;
-        const y = (((rawY % spanY) + spanY) % spanY) - p.height * 0.7;
+      // 2. Render horizontal clouds & smog/fog layers scaled cleanly by AQI mode
+      if (smoothCloud > 0.01 || smoothSmog > 0.01) {
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          const modeDensity = p.kind === 'cloud' ? smoothCloud : smoothSmog;
+          if (modeDensity <= 0.01) continue;
 
-        const sprite =
-          p.kind === 'cloud'
-            ? useWarmSmog && i % 3 === 0
-              ? warmClouds[p.spriteIdx]
-              : coolClouds[p.spriteIdx]
-            : useWarmSmog && i % 2 === 1
-            ? warmFog
-            : coolFog;
+          const slotVisibility = Math.min(
+            1,
+            Math.max(0, (modeDensity - p.slotRatio) * 3.5 + 0.1)
+          );
+          if (slotVisibility <= 0.01) continue;
 
-        ctx.save();
-        ctx.globalAlpha = Math.min(0.46, p.alpha * (1 + smogRatio * 0.28));
-        ctx.drawImage(sprite, x - p.width / 2, y - p.height / 2, p.width, p.height);
-        ctx.restore();
+          const padX = p.width * 0.65 + 40;
+          const spanX = width + padX * 2;
+
+          if (!prefersReducedMotion) {
+            // Pure horizontal drift only (left-to-right or right-to-left)
+            p.xRatio += (p.vx * dt) / spanX;
+            if (p.xRatio > 1) {
+              p.xRatio -= 1;
+            } else if (p.xRatio < 0) {
+              p.xRatio += 1;
+            }
+          }
+
+          const x = p.xRatio * spanX - padX;
+          const spanY = height + p.height * 1.4;
+          const rawY = p.yRatio * spanY - scrollY * p.parallax;
+          const y = (((rawY % spanY) + spanY) % spanY) - p.height * 0.7;
+
+          const useWarmVariant =
+            p.kind === 'fog' ? smoothWarmth > 0.25 : smoothWarmth > 0.45 && i % 3 !== 1;
+          const sprite =
+            p.kind === 'cloud'
+              ? useWarmVariant
+                ? warmClouds[p.spriteIdx]
+                : coolClouds[p.spriteIdx]
+              : useWarmVariant
+              ? warmFog
+              : coolFog;
+
+          const intensityBoost = p.kind === 'fog' ? 0.8 + smoothSmog * 0.45 : 0.88 + smoothCloud * 0.22;
+
+          ctx.save();
+          ctx.globalAlpha = Math.min(0.46, p.alpha * slotVisibility * intensityBoost);
+          ctx.drawImage(sprite, x - p.width / 2, y - p.height / 2, p.width, p.height);
+          ctx.restore();
+        }
       }
 
       if (!prefersReducedMotion) {
-        rafId = window.requestAnimationFrame(drawFrame);
+        rafId = window.requestAnimationFrame((nextNow) => renderScene(nextNow, false));
       }
     };
 
-    rafId = window.requestAnimationFrame(drawFrame);
+    redrawRef.current = () => {
+      if (prefersReducedMotion) {
+        renderScene(performance.now(), true);
+      }
+    };
+
+    rafId = window.requestAnimationFrame((now) => renderScene(now, prefersReducedMotion));
 
     return () => {
+      redrawRef.current = null;
       window.cancelAnimationFrame(rafId);
       resizeObserver?.disconnect();
       window.removeEventListener('resize', syncSize);
